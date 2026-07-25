@@ -102,6 +102,78 @@ func environmentalProcessingMaintainsLevel() {
     }
 }
 
+@Test("Partial Presence uses an energy-preserving crossfade")
+func partialPresenceMaintainsLevel() {
+    let sampleRate: Float = 48_000
+    let frameCount = Int(sampleRate * 4)
+    let measuredStart = Int(sampleRate * 2) * 2
+    let input = representativeMusic(frameCount: frameCount, sampleRate: sampleRate)
+    let inputLevel = rms(input[measuredStart...])
+
+    for place in allPlaces {
+        let processor = FragmentaryDSPCreate(Double(sampleRate))
+        #expect(processor != nil)
+        guard let processor else { continue }
+        defer { FragmentaryDSPDestroy(processor) }
+        FragmentaryDSPSetPlace(processor, place)
+        FragmentaryDSPSetBlend(processor, 0.5)
+
+        var output = Array(repeating: Float.zero, count: input.count)
+        input.withUnsafeBufferPointer { inputBuffer in
+            output.withUnsafeMutableBufferPointer { outputBuffer in
+                FragmentaryDSPProcessInterleavedStereo(
+                    processor,
+                    inputBuffer.baseAddress,
+                    outputBuffer.baseAddress,
+                    UInt32(frameCount)
+                )
+            }
+        }
+
+        let levelRatio = rms(output[measuredStart...]) / inputLevel
+        #expect(levelRatio > 0.70)
+        #expect(levelRatio < 1.25)
+    }
+}
+
+@Test("Full Presence retains a clean high-frequency core")
+func fullPresenceRetainsSourceDetail() {
+    let sampleRate: Float = 48_000
+    let frameCount = Int(sampleRate * 3)
+    let measuredStart = Int(sampleRate * 2) * 2
+    let input = (0..<frameCount).flatMap { frame -> [Float] in
+        let time = Float(frame) / sampleRate
+        return [
+            sin(2 * .pi * 10_000 * time) * 0.1,
+            sin(2 * .pi * 10_000 * time + 0.41) * 0.1
+        ]
+    }
+    let inputLevel = rms(input[measuredStart...])
+
+    for place in allPlaces {
+        let processor = FragmentaryDSPCreate(Double(sampleRate))
+        #expect(processor != nil)
+        guard let processor else { continue }
+        defer { FragmentaryDSPDestroy(processor) }
+        FragmentaryDSPSetPlace(processor, place)
+        FragmentaryDSPSetBlend(processor, 1)
+
+        var output = Array(repeating: Float.zero, count: input.count)
+        input.withUnsafeBufferPointer { inputBuffer in
+            output.withUnsafeMutableBufferPointer { outputBuffer in
+                FragmentaryDSPProcessInterleavedStereo(
+                    processor,
+                    inputBuffer.baseAddress,
+                    outputBuffer.baseAddress,
+                    UInt32(frameCount)
+                )
+            }
+        }
+
+        #expect(rms(output[measuredStart...]) / inputLevel > 0.06)
+    }
+}
+
 @Test("Kitchen Radio does not introduce digital sample-hold artifacts")
 func kitchenRadioAvoidsSampleHoldArtifacts() {
     let sampleRate: Float = 48_000

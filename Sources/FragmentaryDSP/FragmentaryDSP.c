@@ -13,6 +13,7 @@ typedef struct {
     float pan;
     float drive;
     float flutterDepth;
+    float sourceMix;
     float directMix;
     float earlyMix;
     float windowMix;
@@ -39,6 +40,7 @@ struct FragmentaryDSP {
     float pan;
     float drive;
     float flutterDepth;
+    float sourceMix;
     float directMix;
     float earlyMix;
     float windowMix;
@@ -79,6 +81,7 @@ static PlaceParameters parametersForPlace(int place) {
                 .pan = 0.52f,
                 .drive = 1.25f,
                 .flutterDepth = 0.0f,
+                .sourceMix = 0.16f,
                 .directMix = 0.72f,
                 .earlyMix = 0.24f,
                 .windowMix = 0.0f,
@@ -93,6 +96,7 @@ static PlaceParameters parametersForPlace(int place) {
                 .pan = 0.0f,
                 .drive = 1.05f,
                 .flutterDepth = 0.0f,
+                .sourceMix = 0.14f,
                 .directMix = 0.28f,
                 .earlyMix = 0.03f,
                 .windowMix = 0.0f,
@@ -107,6 +111,7 @@ static PlaceParameters parametersForPlace(int place) {
                 .pan = -0.28f,
                 .drive = 1.28f,
                 .flutterDepth = 0.0f,
+                .sourceMix = 0.12f,
                 .directMix = 0.30f,
                 .earlyMix = 0.68f,
                 .windowMix = 0.0f,
@@ -121,6 +126,7 @@ static PlaceParameters parametersForPlace(int place) {
                 .pan = 0.46f,
                 .drive = 3.40f,
                 .flutterDepth = 0.08f,
+                .sourceMix = 0.12f,
                 .directMix = 0.98f,
                 .earlyMix = 0.0f,
                 .windowMix = 0.0f,
@@ -135,6 +141,7 @@ static PlaceParameters parametersForPlace(int place) {
                 .pan = -0.56f,
                 .drive = 1.32f,
                 .flutterDepth = 0.0f,
+                .sourceMix = 0.14f,
                 .directMix = 0.44f,
                 .earlyMix = 0.03f,
                 .windowMix = 0.88f,
@@ -149,6 +156,7 @@ static PlaceParameters parametersForPlace(int place) {
                 .pan = 0.0f,
                 .drive = 1.12f,
                 .flutterDepth = 0.0f,
+                .sourceMix = 0.08f,
                 .directMix = 0.88f,
                 .earlyMix = 0.16f,
                 .windowMix = 0.0f,
@@ -164,6 +172,7 @@ static PlaceParameters parametersForPlace(int place) {
                 .pan = 0.0f,
                 .drive = 1.04f,
                 .flutterDepth = 0.0f,
+                .sourceMix = 0.10f,
                 .directMix = 0.22f,
                 .earlyMix = 0.68f,
                 .windowMix = 0.0f,
@@ -244,6 +253,7 @@ FragmentaryDSP *FragmentaryDSPCreate(double sampleRate) {
     dsp->pan = initial.pan;
     dsp->drive = initial.drive;
     dsp->flutterDepth = initial.flutterDepth;
+    dsp->sourceMix = initial.sourceMix;
     dsp->directMix = initial.directMix;
     dsp->earlyMix = initial.earlyMix;
     dsp->windowMix = initial.windowMix;
@@ -330,6 +340,7 @@ static void processFrame(FragmentaryDSP *dsp, float left, float right, float *ou
     dsp->pan += (target.pan - dsp->pan) * smoothing;
     dsp->drive += (target.drive - dsp->drive) * smoothing;
     dsp->flutterDepth += (target.flutterDepth - dsp->flutterDepth) * smoothing;
+    dsp->sourceMix += (target.sourceMix - dsp->sourceMix) * smoothing;
     dsp->directMix += (target.directMix - dsp->directMix) * smoothing;
     dsp->earlyMix += (target.earlyMix - dsp->earlyMix) * smoothing;
     dsp->windowMix += (target.windowMix - dsp->windowMix) * smoothing;
@@ -498,21 +509,31 @@ static void processFrame(FragmentaryDSP *dsp, float left, float right, float *ou
         ? afterClosingLate
         : late;
 
+    // Preserve a quiet, unfiltered stereo core while the environmental bus
+    // carries all distance filtering, saturation, reflections, and reverb.
+    // sourceMix replaces part of the former filtered direct component, so the
+    // room balance and total direct weight remain stable.
+    float filteredDirectMix = fmaxf(dsp->directMix - dsp->sourceMix, 0.0f);
     float wet[2] = {
-        filtered[0] * dsp->directMix
+        dry[0] * dsp->sourceMix
+            + filtered[0] * filteredDirectMix
             + reflected[0] * dsp->earlyMix
             + windowReturn[0] * dsp->windowMix
             + selectedLate[0] * dsp->lateMix,
-        filtered[1] * dsp->directMix
+        dry[1] * dsp->sourceMix
+            + filtered[1] * filteredDirectMix
             + reflected[1] * dsp->earlyMix
             + windowReturn[1] * dsp->windowMix
             + selectedLate[1] * dsp->lateMix
     };
 
-    // Fade both coloration and distance attenuation with Presence.
-    float gain = 1.0f + (dsp->outputGain - 1.0f) * dsp->blend;
-    *outLeft = softLimit((dry[0] * (1.0f - dsp->blend) + wet[0] * dsp->blend) * gain);
-    *outRight = softLimit((dry[1] * (1.0f - dsp->blend) + wet[1] * dsp->blend) * gain);
+    // Equal-power Presence avoids the loss of energy caused by a linear
+    // crossfade. Makeup gain belongs only to the environmental path.
+    float blendAngle = dsp->blend * (float)M_PI_2;
+    float dryGain = cosf(blendAngle);
+    float wetGain = sinf(blendAngle) * dsp->outputGain;
+    *outLeft = softLimit(dry[0] * dryGain + wet[0] * wetGain);
+    *outRight = softLimit(dry[1] * dryGain + wet[1] * wetGain);
 }
 
 void FragmentaryDSPProcessInterleavedStereo(
