@@ -10,7 +10,9 @@ typedef struct {
     float lowpassHz;
     float highpassHz;
     float width;
+    float pan;
     float drive;
+    float flutterDepth;
     float directMix;
     float earlyMix;
     float windowMix;
@@ -32,7 +34,9 @@ struct FragmentaryDSP {
     float lowpassHz;
     float highpassHz;
     float width;
+    float pan;
     float drive;
+    float flutterDepth;
     float directMix;
     float earlyMix;
     float windowMix;
@@ -43,6 +47,9 @@ struct FragmentaryDSP {
     float lowStateSecond[2];
     float highState[2];
     float highInput[2];
+    uint64_t processedFrameCount;
+    float radioHeldSample[2];
+    uint32_t radioHoldCounter;
 
     float *reflectionLeft;
     float *reflectionRight;
@@ -80,69 +87,81 @@ static PlaceParameters parametersForPlace(int place) {
         case FragmentaryPlaceHotelCorridor:
             return (PlaceParameters) {
                 .lowpassHz = 1550.0f,
-                .highpassHz = 105.0f,
-                .width = 0.01f,
-                .drive = 1.10f,
-                .directMix = 0.70f,
-                .earlyMix = 0.18f,
+                .highpassHz = 165.0f,
+                .width = 0.02f,
+                .pan = 0.52f,
+                .drive = 1.25f,
+                .flutterDepth = 0.0f,
+                .directMix = 0.72f,
+                .earlyMix = 0.24f,
                 .windowMix = 0.0f,
-                .lateMix = 0.12f,
-                .outputGain = 0.54f
+                .lateMix = 0.08f,
+                .outputGain = 0.46f
             };
         case FragmentaryPlaceCinemaAfterCredits:
             return (PlaceParameters) {
-                .lowpassHz = 3900.0f,
-                .highpassHz = 78.0f,
-                .width = 0.30f,
-                .drive = 1.02f,
-                .directMix = 0.42f,
-                .earlyMix = 0.05f,
+                .lowpassHz = 2700.0f,
+                .highpassHz = 60.0f,
+                .width = 0.48f,
+                .pan = 0.0f,
+                .drive = 1.05f,
+                .flutterDepth = 0.0f,
+                .directMix = 0.28f,
+                .earlyMix = 0.03f,
                 .windowMix = 0.0f,
-                .lateMix = 0.42f,
-                .outputGain = 0.57f
+                .lateMix = 0.85f,
+                .outputGain = 0.55f
             };
         case FragmentaryPlaceCarParkAtDawn:
             return (PlaceParameters) {
-                .lowpassHz = 8200.0f,
-                .highpassHz = 175.0f,
-                .width = 0.18f,
-                .drive = 1.03f,
-                .directMix = 0.52f,
-                .earlyMix = 0.28f,
+                .lowpassHz = 12500.0f,
+                .highpassHz = 470.0f,
+                .width = 0.05f,
+                .pan = -0.28f,
+                .drive = 1.28f,
+                .flutterDepth = 0.0f,
+                .directMix = 0.30f,
+                .earlyMix = 0.68f,
                 .windowMix = 0.0f,
-                .lateMix = 0.32f,
-                .outputGain = 0.58f
+                .lateMix = 0.52f,
+                .outputGain = 0.49f
             };
         case FragmentaryPlaceKitchenRadio1979:
             return (PlaceParameters) {
-                .lowpassHz = 3300.0f,
-                .highpassHz = 320.0f,
+                .lowpassHz = 1950.0f,
+                .highpassHz = 650.0f,
                 .width = 0.0f,
-                .drive = 1.62f,
+                .pan = 0.46f,
+                .drive = 3.40f,
+                .flutterDepth = 0.20f,
                 .directMix = 0.98f,
-                .earlyMix = 0.07f,
+                .earlyMix = 0.0f,
                 .windowMix = 0.0f,
-                .lateMix = 0.02f,
-                .outputGain = 0.61f
+                .lateMix = 0.0f,
+                .outputGain = 0.42f
             };
         case FragmentaryPlaceOpenShutters:
             return (PlaceParameters) {
-                .lowpassHz = 6500.0f,
-                .highpassHz = 135.0f,
-                .width = 0.06f,
-                .drive = 1.01f,
-                .directMix = 0.72f,
-                .earlyMix = 0.06f,
-                .windowMix = 0.32f,
-                .lateMix = 0.16f,
-                .outputGain = 0.62f
+                .lowpassHz = 4000.0f,
+                .highpassHz = 410.0f,
+                .width = 0.0f,
+                .pan = -0.56f,
+                .drive = 1.32f,
+                .flutterDepth = 0.0f,
+                .directMix = 0.44f,
+                .earlyMix = 0.03f,
+                .windowMix = 0.88f,
+                .lateMix = 0.14f,
+                .outputGain = 0.44f
             };
         case FragmentaryPlaceThinWall:
             return (PlaceParameters) {
                 .lowpassHz = 520.0f,
                 .highpassHz = 92.0f,
                 .width = 0.0f,
+                .pan = 0.0f,
                 .drive = 1.12f,
+                .flutterDepth = 0.0f,
                 .directMix = 0.88f,
                 .earlyMix = 0.16f,
                 .windowMix = 0.0f,
@@ -155,7 +174,9 @@ static PlaceParameters parametersForPlace(int place) {
                 .lowpassHz = 4800.0f,
                 .highpassHz = 110.0f,
                 .width = 0.12f,
+                .pan = 0.0f,
                 .drive = 1.04f,
+                .flutterDepth = 0.0f,
                 .directMix = 0.22f,
                 .earlyMix = 0.68f,
                 .windowMix = 0.0f,
@@ -243,7 +264,9 @@ FragmentaryDSP *FragmentaryDSPCreate(double sampleRate) {
     dsp->lowpassHz = initial.lowpassHz;
     dsp->highpassHz = initial.highpassHz;
     dsp->width = initial.width;
+    dsp->pan = initial.pan;
     dsp->drive = initial.drive;
+    dsp->flutterDepth = initial.flutterDepth;
     dsp->directMix = initial.directMix;
     dsp->earlyMix = initial.earlyMix;
     dsp->windowMix = initial.windowMix;
@@ -286,6 +309,9 @@ void FragmentaryDSPReset(FragmentaryDSP *dsp) {
     memset(dsp->lowStateSecond, 0, sizeof(dsp->lowStateSecond));
     memset(dsp->highState, 0, sizeof(dsp->highState));
     memset(dsp->highInput, 0, sizeof(dsp->highInput));
+    dsp->processedFrameCount = 0;
+    memset(dsp->radioHeldSample, 0, sizeof(dsp->radioHeldSample));
+    dsp->radioHoldCounter = 0;
     if (dsp->reflectionLeft != NULL && dsp->reflectionRight != NULL) {
         memset(dsp->reflectionLeft, 0, dsp->reflectionCapacity * sizeof(float));
         memset(dsp->reflectionRight, 0, dsp->reflectionCapacity * sizeof(float));
@@ -368,7 +394,9 @@ static void processFrame(FragmentaryDSP *dsp, float left, float right, float *ou
     dsp->lowpassHz += (target.lowpassHz - dsp->lowpassHz) * smoothing;
     dsp->highpassHz += (target.highpassHz - dsp->highpassHz) * smoothing;
     dsp->width += (target.width - dsp->width) * smoothing;
+    dsp->pan += (target.pan - dsp->pan) * smoothing;
     dsp->drive += (target.drive - dsp->drive) * smoothing;
+    dsp->flutterDepth += (target.flutterDepth - dsp->flutterDepth) * smoothing;
     dsp->directMix += (target.directMix - dsp->directMix) * smoothing;
     dsp->earlyMix += (target.earlyMix - dsp->earlyMix) * smoothing;
     dsp->windowMix += (target.windowMix - dsp->windowMix) * smoothing;
@@ -380,6 +408,13 @@ static void processFrame(FragmentaryDSP *dsp, float left, float right, float *ou
         mid + (left - mid) * dsp->width,
         mid + (right - mid) * dsp->width
     };
+    if (fabsf(dsp->pan) > 0.0001f) {
+        if (dsp->pan > 0.0f) {
+            source[0] *= 1.0f - dsp->pan * 0.72f;
+        } else {
+            source[1] *= 1.0f + dsp->pan * 0.72f;
+        }
+    }
     float dry[2] = { left, right };
     float filtered[2];
 
@@ -389,6 +424,29 @@ static void processFrame(FragmentaryDSP *dsp, float left, float right, float *ou
         shaped = highpass(dsp, channel, shaped, dsp->highpassHz);
         filtered[channel] = tanhf(shaped * dsp->drive);
     }
+    if (dsp->flutterDepth > 0.0001f) {
+        float time = (float)((double)dsp->processedFrameCount / dsp->sampleRate);
+        float flutter = 1.0f
+            - dsp->flutterDepth * 0.50f
+            + sinf(2.0f * (float)M_PI * 0.73f * time) * dsp->flutterDepth * 0.34f
+            + sinf(2.0f * (float)M_PI * 6.10f * time) * dsp->flutterDepth * 0.16f;
+        filtered[0] *= flutter;
+        filtered[1] *= flutter;
+    }
+    if (activePlace == FragmentaryPlaceKitchenRadio1979) {
+        // A cheap domestic speaker and aging broadcast chain: roughly
+        // quarter-rate sample hold followed by coarse amplitude resolution.
+        if (dsp->radioHoldCounter == 0) {
+            dsp->radioHeldSample[0] = roundf(filtered[0] * 48.0f) / 48.0f;
+            dsp->radioHeldSample[1] = roundf(filtered[1] * 48.0f) / 48.0f;
+        }
+        filtered[0] = dsp->radioHeldSample[0];
+        filtered[1] = dsp->radioHeldSample[1];
+        dsp->radioHoldCounter = (dsp->radioHoldCounter + 1) % 4;
+    } else {
+        dsp->radioHoldCounter = 0;
+    }
+    dsp->processedFrameCount++;
 
     dsp->reflectionLeft[dsp->reflectionIndex] = filtered[0];
     dsp->reflectionRight[dsp->reflectionIndex] = filtered[1];
@@ -479,7 +537,10 @@ static void processFrame(FragmentaryDSP *dsp, float left, float right, float *ou
         (roomOutput[0] + roomOutput[2]) * 0.5f,
         (roomOutput[1] + roomOutput[3]) * 0.5f
     };
-    float *selectedLate = activePlace == FragmentaryPlaceAfterClosing
+    float *selectedLate = (
+        activePlace == FragmentaryPlaceAfterClosing
+        || activePlace == FragmentaryPlaceCinemaAfterCredits
+    )
         ? afterClosingLate
         : late;
 
