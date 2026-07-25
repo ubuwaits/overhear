@@ -2,10 +2,10 @@ import FragmentaryDSP
 
 enum Place: CaseIterable, Identifiable, Sendable {
     case afterClosing
+    case cinemaAfterCredits
     case openShutters
     case thinWall
     case hotelCorridor
-    case cinemaAfterCredits
     case carParkAtDawn
     case kitchenRadio1979
 
@@ -13,13 +13,13 @@ enum Place: CaseIterable, Identifiable, Sendable {
 
     var title: String {
         switch self {
-        case .afterClosing: "After Closing"
-        case .openShutters: "Open Shutters"
-        case .thinWall: "Thin Wall"
-        case .hotelCorridor: "Hotel Corridor, Door 307"
-        case .cinemaAfterCredits: "Cinema After the Last Credits"
-        case .carParkAtDawn: "Car Park at Dawn"
-        case .kitchenRadio1979: "Kitchen Radio"
+        case .afterClosing: "In an empty mall"
+        case .cinemaAfterCredits: "At the movies"
+        case .openShutters: "Through an open window"
+        case .thinWall: "Through a thin wall"
+        case .hotelCorridor: "In a hotel corridor"
+        case .carParkAtDawn: "In a parking garage"
+        case .kitchenRadio1979: "Through a kitchen radio"
         }
     }
 

@@ -3,10 +3,10 @@ import Testing
 
 private let allPlaces: [FragmentaryPlace] = [
     FragmentaryPlaceAfterClosing,
+    FragmentaryPlaceCinemaAfterCredits,
     FragmentaryPlaceOpenShutters,
     FragmentaryPlaceThinWall,
     FragmentaryPlaceHotelCorridor,
-    FragmentaryPlaceCinemaAfterCredits,
     FragmentaryPlaceCarParkAtDawn,
     FragmentaryPlaceKitchenRadio1979
 ]
@@ -174,7 +174,7 @@ func fullPresenceRetainsSourceDetail() {
     }
 }
 
-@Test("Kitchen Radio does not introduce digital sample-hold artifacts")
+@Test("Through a kitchen radio does not introduce digital sample-hold artifacts")
 func kitchenRadioAvoidsSampleHoldArtifacts() {
     let sampleRate: Float = 48_000
     let frameCount = Int(sampleRate * 2)
