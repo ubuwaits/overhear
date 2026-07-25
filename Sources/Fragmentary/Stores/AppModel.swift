@@ -22,7 +22,7 @@ final class AppModel {
         }
     }
 
-    var blend: Double = 0.72 {
+    var blend: Double = 1.0 {
         didSet {
             engine.setBlend(blend)
         }

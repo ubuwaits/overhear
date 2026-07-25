@@ -3,6 +3,8 @@ import SwiftUI
 
 struct PlacePopoverView: View {
     @Bindable var model: AppModel
+    @State private var isQuitHovered = false
+    @State private var hoveredPlace: Place?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -12,28 +14,23 @@ struct PlacePopoverView: View {
             Divider()
             controls
         }
-        .frame(width: 340)
+        .frame(width: 300)
         .background(.regularMaterial)
     }
 
     private var header: some View {
         HStack(spacing: 12) {
             ZStack {
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
                     .fill(model.isOn ? Color.accentColor.opacity(0.16) : Color.secondary.opacity(0.10))
                 Image(systemName: model.isOn ? "waveform.path" : "waveform.path.badge.minus")
-                    .font(.system(size: 18, weight: .medium))
+                    .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(model.isOn ? Color.accentColor : Color.secondary)
             }
-            .frame(width: 38, height: 38)
+            .frame(width: 26, height: 26)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Fragmentary")
-                    .font(.headline)
-                Text(model.statusText)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+            Text("Fragmentary")
+                .font(.system(size: 12, weight: .semibold))
 
             Spacer()
 
@@ -45,34 +42,33 @@ struct PlacePopoverView: View {
             .labelsHidden()
             .disabled(model.state == .starting)
         }
-        .padding(16)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
     }
 
     private var places: some View {
-        VStack(alignment: .leading, spacing: 7) {
+        VStack(alignment: .leading, spacing: 0) {
             Text("PLACE")
-                .font(.caption2.weight(.semibold))
+                .font(.system(size: 12, weight: .semibold))
                 .tracking(0.8)
                 .foregroundStyle(.secondary)
-                .padding(.horizontal, 4)
 
             ForEach(Place.allCases) { place in
                 Button {
                     model.selectedPlace = place
                 } label: {
-                    HStack(spacing: 12) {
+                    HStack(spacing: 10) {
                         Image(systemName: place.symbol)
-                            .font(.system(size: 16, weight: .medium))
-                            .frame(width: 24)
-                            .foregroundStyle(model.selectedPlace == place ? Color.accentColor : Color.secondary)
+                            .font(.system(size: 15, weight: .medium))
+                            .frame(width: 20)
+                            .foregroundStyle(
+                                model.selectedPlace == place || hoveredPlace == place
+                                    ? Color.accentColor
+                                    : Color.secondary
+                            )
 
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(place.title)
-                                .font(.system(size: 13, weight: .medium))
-                            Text(place.subtitle)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
+                        Text(place.title)
+                            .font(.system(size: 12, weight: .medium))
 
                         Spacer()
                         if model.selectedPlace == place {
@@ -82,27 +78,40 @@ struct PlacePopoverView: View {
                         }
                     }
                     .contentShape(Rectangle())
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, 8)
+                    .frame(maxWidth: .infinity, minHeight: 32)
                     .background(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .fill(model.selectedPlace == place ? Color.accentColor.opacity(0.10) : .clear)
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .fill(
+                                model.selectedPlace == place
+                                    ? Color.accentColor.opacity(0.12)
+                                    : hoveredPlace == place
+                                        ? Color.accentColor.opacity(0.06)
+                                        : Color.clear
+                            )
                     )
                 }
                 .buttonStyle(.plain)
+                .onHover { hovering in
+                    if hovering {
+                        hoveredPlace = place
+                    } else if hoveredPlace == place {
+                        hoveredPlace = nil
+                    }
+                }
+                .animation(.easeOut(duration: 0.12), value: hoveredPlace)
             }
         }
-        .padding(12)
+        .padding(10)
     }
 
     private var controls: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 8) {
             if let error = model.errorMessage {
                 HStack(alignment: .top, spacing: 9) {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundStyle(.orange)
                     Text(error)
-                        .font(.caption)
                         .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 0)
                     Button("Retry") {
@@ -110,38 +119,53 @@ struct PlacePopoverView: View {
                     }
                     .controlSize(.small)
                 }
-                .padding(10)
-                .background(.orange.opacity(0.10), in: RoundedRectangle(cornerRadius: 8))
+                .font(.system(size: 12))
+                .padding(8)
+                .background(.orange.opacity(0.10), in: RoundedRectangle(cornerRadius: 6))
             }
 
-            HStack {
-                Label("Presence", systemImage: "circle.lefthalf.filled")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            HStack(spacing: 10) {
+                Image(systemName: "circle.lefthalf.filled")
+                    .frame(width: 20)
+                Text("Presence")
                 Slider(value: $model.blend, in: 0...1)
                 Text("\(Int(model.blend * 100))%")
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
                     .frame(width: 34, alignment: .trailing)
             }
+            .font(.system(size: 12))
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 8)
 
-            HStack {
-                SettingsLink {
-                    Label("Settings", systemImage: "gearshape")
+            Divider()
+
+            Button {
+                NSApplication.shared.terminate(nil)
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "power")
+                        .frame(width: 20)
+                    Text("Quit Fragmentary")
+                    Spacer()
+                    Text("⌘Q")
+                        .foregroundStyle(isQuitHovered ? Color.white.opacity(0.75) : Color.secondary)
                 }
-                .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
-
-                Spacer()
-
-                Button("Quit") {
-                    NSApplication.shared.terminate(nil)
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
+                .padding(.horizontal, 8)
+                .frame(maxWidth: .infinity, minHeight: 30, alignment: .leading)
+                .contentShape(Rectangle())
             }
-            .font(.caption)
+            .buttonStyle(.plain)
+            .font(.system(size: 12))
+            .foregroundStyle(isQuitHovered ? .white : .primary)
+            .background(
+                isQuitHovered ? Color.accentColor : .clear,
+                in: RoundedRectangle(cornerRadius: 6, style: .continuous)
+            )
+            .onHover { hovering in
+                isQuitHovered = hovering
+            }
+            .keyboardShortcut("q", modifiers: .command)
         }
-        .padding(14)
+        .padding(10)
     }
 }

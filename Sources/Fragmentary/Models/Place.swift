@@ -20,19 +20,7 @@ enum Place: String, CaseIterable, Identifiable, Sendable {
         case .hotelCorridor: "Hotel Corridor, Door 307"
         case .cinemaAfterCredits: "Cinema After the Last Credits"
         case .carParkAtDawn: "Car Park at Dawn"
-        case .kitchenRadio1979: "Kitchen Radio, 1979"
-        }
-    }
-
-    var subtitle: String {
-        switch self {
-        case .afterClosing: "An empty shopping arcade at night"
-        case .openShutters: "Music crossing an Italian square"
-        case .thinWall: "The room next door, just audible"
-        case .hotelCorridor: "Music leaking beneath a distant door"
-        case .cinemaAfterCredits: "A dark auditorium absorbing the final song"
-        case .carParkAtDawn: "Concrete decks returning every phrase"
-        case .kitchenRadio1979: "A small speaker remembered from another room"
+        case .kitchenRadio1979: "Kitchen Radio"
         }
     }
 

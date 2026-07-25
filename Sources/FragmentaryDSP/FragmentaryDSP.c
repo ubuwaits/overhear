@@ -202,7 +202,7 @@ FragmentaryDSP *FragmentaryDSPCreate(double sampleRate) {
 
     dsp->sampleRate = sampleRate;
     atomic_init(&dsp->place, FragmentaryPlaceAfterClosing);
-    atomic_init(&dsp->targetBlend, 0.72f);
+    atomic_init(&dsp->targetBlend, 1.0f);
     atomic_init(&dsp->ringWriteFrame, 0);
     atomic_init(&dsp->ringReadFrame, 0);
     atomic_init(&dsp->underrunCount, 0);
@@ -260,7 +260,7 @@ FragmentaryDSP *FragmentaryDSPCreate(double sampleRate) {
     dsp->startupFadeRemaining = dsp->startupFadeLength;
 
     PlaceParameters initial = parametersForPlace(FragmentaryPlaceAfterClosing);
-    dsp->blend = 0.72f;
+    dsp->blend = 1.0f;
     dsp->lowpassHz = initial.lowpassHz;
     dsp->highpassHz = initial.highpassHz;
     dsp->width = initial.width;
@@ -434,15 +434,16 @@ static void processFrame(FragmentaryDSP *dsp, float left, float right, float *ou
         filtered[1] *= flutter;
     }
     if (activePlace == FragmentaryPlaceKitchenRadio1979) {
-        // A cheap domestic speaker and aging broadcast chain: roughly
-        // quarter-rate sample hold followed by coarse amplitude resolution.
+        // A cheap domestic speaker and aging broadcast chain: a light
+        // sample hold and quantization layer, kept restrained enough that it
+        // reads as worn reproduction rather than digital static.
         if (dsp->radioHoldCounter == 0) {
-            dsp->radioHeldSample[0] = roundf(filtered[0] * 48.0f) / 48.0f;
-            dsp->radioHeldSample[1] = roundf(filtered[1] * 48.0f) / 48.0f;
+            dsp->radioHeldSample[0] = roundf(filtered[0] * 128.0f) / 128.0f;
+            dsp->radioHeldSample[1] = roundf(filtered[1] * 128.0f) / 128.0f;
         }
         filtered[0] = dsp->radioHeldSample[0];
         filtered[1] = dsp->radioHeldSample[1];
-        dsp->radioHoldCounter = (dsp->radioHoldCounter + 1) % 4;
+        dsp->radioHoldCounter = (dsp->radioHoldCounter + 1) % 2;
     } else {
         dsp->radioHoldCounter = 0;
     }

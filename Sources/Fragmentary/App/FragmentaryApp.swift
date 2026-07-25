@@ -20,9 +20,5 @@ struct FragmentaryApp: App {
                 .accessibilityLabel("Fragmentary: \(model.statusText)")
         }
         .menuBarExtraStyle(.window)
-
-        Settings {
-            SettingsView(model: model)
-        }
     }
 }
