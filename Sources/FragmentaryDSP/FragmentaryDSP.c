@@ -50,8 +50,6 @@ struct FragmentaryDSP {
     float highState[2];
     float highInput[2];
     uint64_t processedFrameCount;
-    float radioHeldSample[2];
-    uint32_t radioHoldCounter;
 
     float *reflectionLeft;
     float *reflectionRight;
@@ -85,7 +83,7 @@ static PlaceParameters parametersForPlace(int place) {
                 .earlyMix = 0.24f,
                 .windowMix = 0.0f,
                 .lateMix = 0.08f,
-                .outputGain = 0.46f
+                .outputGain = 1.59f
             };
         case FragmentaryPlaceCinemaAfterCredits:
             return (PlaceParameters) {
@@ -99,7 +97,7 @@ static PlaceParameters parametersForPlace(int place) {
                 .earlyMix = 0.03f,
                 .windowMix = 0.0f,
                 .lateMix = 0.85f,
-                .outputGain = 0.55f
+                .outputGain = 1.86f
             };
         case FragmentaryPlaceCarParkAtDawn:
             return (PlaceParameters) {
@@ -113,7 +111,7 @@ static PlaceParameters parametersForPlace(int place) {
                 .earlyMix = 0.68f,
                 .windowMix = 0.0f,
                 .lateMix = 0.52f,
-                .outputGain = 0.49f
+                .outputGain = 1.02f
             };
         case FragmentaryPlaceKitchenRadio1979:
             return (PlaceParameters) {
@@ -122,12 +120,12 @@ static PlaceParameters parametersForPlace(int place) {
                 .width = 0.0f,
                 .pan = 0.46f,
                 .drive = 3.40f,
-                .flutterDepth = 0.20f,
+                .flutterDepth = 0.08f,
                 .directMix = 0.98f,
                 .earlyMix = 0.0f,
                 .windowMix = 0.0f,
                 .lateMix = 0.0f,
-                .outputGain = 0.42f
+                .outputGain = 0.84f
             };
         case FragmentaryPlaceOpenShutters:
             return (PlaceParameters) {
@@ -141,7 +139,7 @@ static PlaceParameters parametersForPlace(int place) {
                 .earlyMix = 0.03f,
                 .windowMix = 0.88f,
                 .lateMix = 0.14f,
-                .outputGain = 0.44f
+                .outputGain = 1.76f
             };
         case FragmentaryPlaceThinWall:
             return (PlaceParameters) {
@@ -155,7 +153,7 @@ static PlaceParameters parametersForPlace(int place) {
                 .earlyMix = 0.16f,
                 .windowMix = 0.0f,
                 .lateMix = 0.04f,
-                .outputGain = 0.44f
+                .outputGain = 1.23f
             };
         case FragmentaryPlaceAfterClosing:
         default:
@@ -170,7 +168,7 @@ static PlaceParameters parametersForPlace(int place) {
                 .earlyMix = 0.68f,
                 .windowMix = 0.0f,
                 .lateMix = 1.08f,
-                .outputGain = 0.55f
+                .outputGain = 1.14f
             };
     }
 }
@@ -387,20 +385,6 @@ static void processFrame(FragmentaryDSP *dsp, float left, float right, float *ou
             + sinf(2.0f * (float)M_PI * 6.10f * time) * dsp->flutterDepth * 0.16f;
         filtered[0] *= flutter;
         filtered[1] *= flutter;
-    }
-    if (activePlace == FragmentaryPlaceKitchenRadio1979) {
-        // A cheap domestic speaker and aging broadcast chain: a light
-        // sample hold and quantization layer, kept restrained enough that it
-        // reads as worn reproduction rather than digital static.
-        if (dsp->radioHoldCounter == 0) {
-            dsp->radioHeldSample[0] = roundf(filtered[0] * 128.0f) / 128.0f;
-            dsp->radioHeldSample[1] = roundf(filtered[1] * 128.0f) / 128.0f;
-        }
-        filtered[0] = dsp->radioHeldSample[0];
-        filtered[1] = dsp->radioHeldSample[1];
-        dsp->radioHoldCounter ^= 1;
-    } else {
-        dsp->radioHoldCounter = 0;
     }
     dsp->processedFrameCount++;
 

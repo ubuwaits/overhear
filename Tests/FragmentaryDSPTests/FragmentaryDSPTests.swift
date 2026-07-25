@@ -1,6 +1,44 @@
 import FragmentaryDSP
 import Testing
 
+private let allPlaces: [FragmentaryPlace] = [
+    FragmentaryPlaceAfterClosing,
+    FragmentaryPlaceOpenShutters,
+    FragmentaryPlaceThinWall,
+    FragmentaryPlaceHotelCorridor,
+    FragmentaryPlaceCinemaAfterCredits,
+    FragmentaryPlaceCarParkAtDawn,
+    FragmentaryPlaceKitchenRadio1979
+]
+
+private func representativeMusic(frameCount: Int, sampleRate: Float) -> [Float] {
+    let partials: [(frequency: Float, amplitude: Float)] = [
+        (63, 0.060),
+        (125, 0.052),
+        (250, 0.045),
+        (500, 0.038),
+        (1_000, 0.032),
+        (2_000, 0.026),
+        (4_000, 0.020),
+        (8_000, 0.014),
+        (12_000, 0.009)
+    ]
+    return (0..<frameCount).flatMap { frame -> [Float] in
+        let time = Float(frame) / sampleRate
+        let left = partials.reduce(Float.zero) {
+            $0 + sin(2 * .pi * $1.frequency * time) * $1.amplitude
+        }
+        let right = partials.reduce(Float.zero) {
+            $0 + sin(2 * .pi * $1.frequency * time + 0.37) * $1.amplitude
+        }
+        return [left, right]
+    }
+}
+
+private func rms(_ samples: ArraySlice<Float>) -> Float {
+    sqrt(samples.reduce(Float.zero) { $0 + $1 * $1 } / Float(samples.count))
+}
+
 @Test("Zero presence is an exact transport bypass")
 func zeroPresenceIsExactBypass() {
     let processor = FragmentaryDSPCreate(44_100)
@@ -30,6 +68,75 @@ func zeroPresenceIsExactBypass() {
     #expect(output == input)
 }
 
+@Test("Environmental processing avoids a large loudness drop")
+func environmentalProcessingMaintainsLevel() {
+    let sampleRate: Float = 48_000
+    let frameCount = Int(sampleRate * 4)
+    let measuredStart = Int(sampleRate * 2) * 2
+    let input = representativeMusic(frameCount: frameCount, sampleRate: sampleRate)
+    let inputLevel = rms(input[measuredStart...])
+
+    for place in allPlaces {
+        let processor = FragmentaryDSPCreate(Double(sampleRate))
+        #expect(processor != nil)
+        guard let processor else { continue }
+        defer { FragmentaryDSPDestroy(processor) }
+        FragmentaryDSPSetPlace(processor, place)
+        FragmentaryDSPSetBlend(processor, 1)
+
+        var output = Array(repeating: Float.zero, count: input.count)
+        input.withUnsafeBufferPointer { inputBuffer in
+            output.withUnsafeMutableBufferPointer { outputBuffer in
+                FragmentaryDSPProcessInterleavedStereo(
+                    processor,
+                    inputBuffer.baseAddress,
+                    outputBuffer.baseAddress,
+                    UInt32(frameCount)
+                )
+            }
+        }
+
+        let levelRatio = rms(output[measuredStart...]) / inputLevel
+        #expect(levelRatio > 0.60)
+        #expect(levelRatio < 0.82)
+    }
+}
+
+@Test("Kitchen Radio does not introduce digital sample-hold artifacts")
+func kitchenRadioAvoidsSampleHoldArtifacts() {
+    let sampleRate: Float = 48_000
+    let frameCount = Int(sampleRate * 2)
+    let input = (0..<frameCount).flatMap { frame -> [Float] in
+        let sample = sin(Float(frame) * 2 * .pi * 440 / sampleRate) * 0.2
+        return [sample, sample]
+    }
+
+    let processor = FragmentaryDSPCreate(Double(sampleRate))
+    #expect(processor != nil)
+    guard let processor else { return }
+    defer { FragmentaryDSPDestroy(processor) }
+    FragmentaryDSPSetPlace(processor, FragmentaryPlaceKitchenRadio1979)
+    FragmentaryDSPSetBlend(processor, 1)
+
+    var output = Array(repeating: Float.zero, count: input.count)
+    input.withUnsafeBufferPointer { inputBuffer in
+        output.withUnsafeMutableBufferPointer { outputBuffer in
+            FragmentaryDSPProcessInterleavedStereo(
+                processor,
+                inputBuffer.baseAddress,
+                outputBuffer.baseAddress,
+                UInt32(frameCount)
+            )
+        }
+    }
+
+    let settledLeft = stride(from: frameCount, to: output.count, by: 2).map { output[$0] }
+    let repeatedFrames = zip(settledLeft, settledLeft.dropFirst()).count {
+        abs($0 - $1) < 0.000_000_1
+    }
+    #expect(repeatedFrames < settledLeft.count / 100)
+}
+
 @Test("All places produce finite, altered stereo audio")
 func allPlacesProduceFiniteAudio() {
     let frameCount = 48_000
@@ -38,15 +145,7 @@ func allPlacesProduceFiniteAudio() {
         return [sample, sample]
     }
 
-    for place in [
-        FragmentaryPlaceAfterClosing,
-        FragmentaryPlaceOpenShutters,
-        FragmentaryPlaceThinWall,
-        FragmentaryPlaceHotelCorridor,
-        FragmentaryPlaceCinemaAfterCredits,
-        FragmentaryPlaceCarParkAtDawn,
-        FragmentaryPlaceKitchenRadio1979
-    ] {
+    for place in allPlaces {
         let processor = FragmentaryDSPCreate(48_000)
         #expect(processor != nil)
         guard let processor else { continue }
@@ -80,29 +179,31 @@ func loudMaterialDoesNotHardClip() {
         return [fundamental + overtone, fundamental - overtone]
     }
 
-    let processor = FragmentaryDSPCreate(48_000)
-    #expect(processor != nil)
-    guard let processor else { return }
-    defer { FragmentaryDSPDestroy(processor) }
-    FragmentaryDSPSetPlace(processor, FragmentaryPlaceAfterClosing)
-    FragmentaryDSPSetBlend(processor, 1)
+    for place in allPlaces {
+        let processor = FragmentaryDSPCreate(48_000)
+        #expect(processor != nil)
+        guard let processor else { continue }
+        defer { FragmentaryDSPDestroy(processor) }
+        FragmentaryDSPSetPlace(processor, place)
+        FragmentaryDSPSetBlend(processor, 1)
 
-    var output = Array(repeating: Float.zero, count: input.count)
-    input.withUnsafeBufferPointer { inputBuffer in
-        output.withUnsafeMutableBufferPointer { outputBuffer in
-            FragmentaryDSPProcessInterleavedStereo(
-                processor,
-                inputBuffer.baseAddress,
-                outputBuffer.baseAddress,
-                UInt32(frameCount)
-            )
+        var output = Array(repeating: Float.zero, count: input.count)
+        input.withUnsafeBufferPointer { inputBuffer in
+            output.withUnsafeMutableBufferPointer { outputBuffer in
+                FragmentaryDSPProcessInterleavedStereo(
+                    processor,
+                    inputBuffer.baseAddress,
+                    outputBuffer.baseAddress,
+                    UInt32(frameCount)
+                )
+            }
         }
-    }
 
-    let peak = output.map(abs).max() ?? 0
-    let largestStep = zip(output.dropFirst(2), output).map { abs($0 - $1) }.max() ?? 0
-    #expect(peak < 0.999)
-    #expect(largestStep < 0.30)
+        let peak = output.map(abs).max() ?? 0
+        let largestStep = zip(output.dropFirst(2), output).map { abs($0 - $1) }.max() ?? 0
+        #expect(peak < 0.999)
+        #expect(largestStep < 0.30)
+    }
 }
 
 @Test("Reflections remain quieter than the source transient")
@@ -119,6 +220,22 @@ func reflectionsDoNotBecomeDiscreteEchoes() {
         defer { FragmentaryDSPDestroy(processor) }
         FragmentaryDSPSetPlace(processor, place)
         FragmentaryDSPSetBlend(processor, 1)
+
+        // Let the normal place-change smoothing settle so the source transient
+        // and its later reflections are measured at the same output gain.
+        let settlingFrameCount = 96_000
+        let settlingInput = Array(repeating: Float.zero, count: settlingFrameCount * 2)
+        var settlingOutput = settlingInput
+        settlingInput.withUnsafeBufferPointer { inputBuffer in
+            settlingOutput.withUnsafeMutableBufferPointer { outputBuffer in
+                FragmentaryDSPProcessInterleavedStereo(
+                    processor,
+                    inputBuffer.baseAddress,
+                    outputBuffer.baseAddress,
+                    UInt32(settlingFrameCount)
+                )
+            }
+        }
 
         let frameCount = 96_000
         var input = Array(repeating: Float.zero, count: frameCount * 2)
