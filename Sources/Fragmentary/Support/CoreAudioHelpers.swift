@@ -30,15 +30,11 @@ func requireNoError(_ status: OSStatus, _ operation: String) throws {
     }
 }
 
-func propertyAddress(
-    _ selector: AudioObjectPropertySelector,
-    scope: AudioObjectPropertyScope = kAudioObjectPropertyScopeGlobal,
-    element: AudioObjectPropertyElement = kAudioObjectPropertyElementMain
-) -> AudioObjectPropertyAddress {
+func propertyAddress(_ selector: AudioObjectPropertySelector) -> AudioObjectPropertyAddress {
     AudioObjectPropertyAddress(
         mSelector: selector,
-        mScope: scope,
-        mElement: element
+        mScope: kAudioObjectPropertyScopeGlobal,
+        mElement: kAudioObjectPropertyElementMain
     )
 }
 
@@ -78,10 +74,9 @@ func readCFString(_ objectID: AudioObjectID, selector: AudioObjectPropertySelect
 
 func readASBD(
     _ objectID: AudioObjectID,
-    selector: AudioObjectPropertySelector,
-    scope: AudioObjectPropertyScope = kAudioObjectPropertyScopeGlobal
+    selector: AudioObjectPropertySelector
 ) throws -> AudioStreamBasicDescription {
-    var address = propertyAddress(selector, scope: scope)
+    var address = propertyAddress(selector)
     var format = AudioStreamBasicDescription()
     var size = UInt32(MemoryLayout<AudioStreamBasicDescription>.size)
     try requireNoError(

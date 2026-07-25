@@ -30,6 +30,8 @@ final class AppModel {
 
     private(set) var state: State = .off
     private let engine = SystemAudioEngine()
+    private var transitionTask: Task<Void, Never>?
+    private var transitionRevision = 0
 
     var isOn: Bool {
         state == .starting || state == .active
@@ -61,11 +63,21 @@ final class AppModel {
         // Bring privacy prompts forward for this otherwise accessory-only app.
         NSApplication.shared.activate(ignoringOtherApps: true)
         state = .starting
-        Task {
+        transitionRevision += 1
+        let revision = transitionRevision
+        let previousTransition = transitionTask
+        let place = selectedPlace
+        let presence = blend
+
+        transitionTask = Task { [weak self] in
+            await previousTransition?.value
+            guard let self else { return }
             do {
-                try await engine.start(place: selectedPlace, blend: blend)
+                try await engine.start(place: place, blend: presence)
+                guard revision == transitionRevision else { return }
                 state = .active
             } catch {
+                guard revision == transitionRevision else { return }
                 state = .error(error.localizedDescription)
             }
         }
@@ -73,7 +85,12 @@ final class AppModel {
 
     func turnOff() {
         state = .off
-        Task {
+        transitionRevision += 1
+        let previousTransition = transitionTask
+
+        transitionTask = Task { [weak self] in
+            await previousTransition?.value
+            guard let self else { return }
             await engine.stop()
         }
     }

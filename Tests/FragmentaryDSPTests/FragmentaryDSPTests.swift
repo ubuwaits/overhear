@@ -142,48 +142,38 @@ func reflectionsDoNotBecomeDiscreteEchoes() {
     }
 }
 
-@Test("Buffered capture and playback stay synchronized")
-func bufferedCaptureAndPlaybackStaySynchronized() {
+@Test("AudioBufferList processing clears an unwritten output tail")
+func audioBufferListProcessingClearsOutputTail() {
     let processor = FragmentaryDSPCreate(48_000)
     #expect(processor != nil)
     guard let processor else { return }
     defer { FragmentaryDSPDestroy(processor) }
+    FragmentaryDSPSetBlend(processor, 0)
 
-    let inputFrames = 16_000
-    var input = (0..<inputFrames).flatMap { frame -> [Float] in
-        let sample = sin(Float(frame) * 2 * .pi * 330 / 48_000) * 0.3
-        return [sample, sample]
-    }
-
-    input.withUnsafeMutableBytes { bytes in
+    var input: [Float] = [0.2, -0.2, 0.4, -0.4]
+    var output = Array(repeating: Float(1), count: 8)
+    input.withUnsafeMutableBytes { inputBytes in
         var inputList = AudioBufferList(
             mNumberBuffers: 1,
             mBuffers: AudioBuffer(
                 mNumberChannels: 2,
-                mDataByteSize: UInt32(bytes.count),
-                mData: bytes.baseAddress
+                mDataByteSize: UInt32(inputBytes.count),
+                mData: inputBytes.baseAddress
             )
         )
-        FragmentaryDSPPush(processor, &inputList, UInt32(inputFrames))
-    }
-
-    var heardSignal = false
-    for _ in 0..<20 {
-        var output = Array(repeating: Float.zero, count: 512 * 2)
-        output.withUnsafeMutableBytes { bytes in
+        output.withUnsafeMutableBytes { outputBytes in
             var outputList = AudioBufferList(
                 mNumberBuffers: 1,
                 mBuffers: AudioBuffer(
                     mNumberChannels: 2,
-                    mDataByteSize: UInt32(bytes.count),
-                    mData: bytes.baseAddress
+                    mDataByteSize: UInt32(outputBytes.count),
+                    mData: outputBytes.baseAddress
                 )
             )
-            FragmentaryDSPRender(processor, &outputList, 512)
+            FragmentaryDSPProcess(processor, &inputList, &outputList, 2)
         }
-        heardSignal = heardSignal || output.contains { abs($0) > 0.001 }
     }
 
-    #expect(heardSignal)
-    #expect(FragmentaryDSPUnderrunCount(processor) == 0)
+    #expect(output[..<4].elementsEqual(input))
+    #expect(output[4...].allSatisfy { $0 == 0 })
 }

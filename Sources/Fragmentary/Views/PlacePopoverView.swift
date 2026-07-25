@@ -3,8 +3,6 @@ import SwiftUI
 
 struct PlacePopoverView: View {
     @Bindable var model: AppModel
-    @State private var isQuitHovered = false
-    @State private var hoveredPlace: Place?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -54,52 +52,12 @@ struct PlacePopoverView: View {
                 .foregroundStyle(.secondary)
 
             ForEach(Place.allCases) { place in
-                Button {
+                PlaceRow(
+                    place: place,
+                    isSelected: model.selectedPlace == place
+                ) {
                     model.selectedPlace = place
-                } label: {
-                    HStack(spacing: 10) {
-                        Image(systemName: place.symbol)
-                            .font(.system(size: 15, weight: .medium))
-                            .frame(width: 20)
-                            .foregroundStyle(
-                                model.selectedPlace == place || hoveredPlace == place
-                                    ? Color.accentColor
-                                    : Color.secondary
-                            )
-
-                        Text(place.title)
-                            .font(.system(size: 12, weight: .medium))
-
-                        Spacer()
-                        if model.selectedPlace == place {
-                            Image(systemName: "checkmark")
-                                .font(.caption.weight(.bold))
-                                .foregroundStyle(Color.accentColor)
-                        }
-                    }
-                    .contentShape(Rectangle())
-                    .padding(.horizontal, 8)
-                    .frame(maxWidth: .infinity, minHeight: 32)
-                    .background(
-                        RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .fill(
-                                model.selectedPlace == place
-                                    ? Color.accentColor.opacity(0.12)
-                                    : hoveredPlace == place
-                                        ? Color.accentColor.opacity(0.06)
-                                        : Color.clear
-                            )
-                    )
                 }
-                .buttonStyle(.plain)
-                .onHover { hovering in
-                    if hovering {
-                        hoveredPlace = place
-                    } else if hoveredPlace == place {
-                        hoveredPlace = nil
-                    }
-                }
-                .animation(.easeOut(duration: 0.12), value: hoveredPlace)
             }
         }
         .padding(10)
@@ -139,32 +97,9 @@ struct PlacePopoverView: View {
 
             Divider()
 
-            Button {
+            QuitMenuRow {
                 NSApplication.shared.terminate(nil)
-            } label: {
-                HStack(spacing: 10) {
-                    Image(systemName: "power")
-                        .frame(width: 20)
-                    Text("Quit Fragmentary")
-                    Spacer()
-                    Text("⌘Q")
-                        .foregroundStyle(isQuitHovered ? Color.white.opacity(0.75) : Color.secondary)
-                }
-                .padding(.horizontal, 8)
-                .frame(maxWidth: .infinity, minHeight: 30, alignment: .leading)
-                .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
-            .font(.system(size: 12))
-            .foregroundStyle(isQuitHovered ? .white : .primary)
-            .background(
-                isQuitHovered ? Color.accentColor : .clear,
-                in: RoundedRectangle(cornerRadius: 6, style: .continuous)
-            )
-            .onHover { hovering in
-                isQuitHovered = hovering
-            }
-            .keyboardShortcut("q", modifiers: .command)
         }
         .padding(10)
     }

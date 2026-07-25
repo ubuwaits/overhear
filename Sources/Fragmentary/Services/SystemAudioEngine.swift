@@ -88,7 +88,7 @@ final class SystemAudioEngine: @unchecked Sendable {
         // Fragmentary supplies the only audible copy through its own output
         // engine. Conditional muting can briefly expose the original hardware
         // route between tap reads, producing comb-filtering against the
-        // buffered copy that is especially obvious on sustained music.
+        // processed copy that is especially obvious on sustained music.
         description.muteBehavior = .muted
 
         var newTapID = AudioObjectID(kAudioObjectUnknown)
@@ -192,6 +192,9 @@ final class SystemAudioEngine: @unchecked Sendable {
     }
 
     private func stopSynchronously() {
+        let destroyedAudioObjects =
+            aggregateDeviceID != kAudioObjectUnknown || tapID != kAudioObjectUnknown
+
         if aggregateDeviceID != kAudioObjectUnknown, let ioProcID {
             _ = AudioDeviceStop(aggregateDeviceID, ioProcID)
             _ = AudioDeviceDestroyIOProcID(aggregateDeviceID, ioProcID)
@@ -209,16 +212,12 @@ final class SystemAudioEngine: @unchecked Sendable {
             }
             tapID = AudioObjectID(kAudioObjectUnknown)
         }
-        // Aggregate and tap teardown completes asynchronously inside coreaudiod.
-        // A small barrier prevents an immediate toggle-on from racing that
-        // teardown and starting against stale stream state.
-        Thread.sleep(forTimeInterval: 0.12)
+        if destroyedAudioObjects {
+            // Aggregate and tap teardown completes asynchronously inside
+            // coreaudiod. Prevent an immediate restart from racing it.
+            Thread.sleep(forTimeInterval: 0.12)
+        }
         if let processor {
-            let underruns = FragmentaryDSPUnderrunCount(processor)
-            let overflows = FragmentaryDSPOverflowCount(processor)
-            logger.notice(
-                "Buffered output stopped with \(underruns, privacy: .public) underrun reads and \(overflows, privacy: .public) overflow writes"
-            )
             FragmentaryDSPDestroy(processor)
             self.processor = nil
         }

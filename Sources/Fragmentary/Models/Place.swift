@@ -1,7 +1,6 @@
-import Foundation
 import FragmentaryDSP
 
-enum Place: String, CaseIterable, Identifiable, Sendable {
+enum Place: CaseIterable, Identifiable, Sendable {
     case afterClosing
     case openShutters
     case thinWall
