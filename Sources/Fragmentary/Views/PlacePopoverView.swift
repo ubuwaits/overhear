@@ -3,61 +3,39 @@ import SwiftUI
 
 struct PlacePopoverView: View {
     @Bindable var model: AppModel
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            header
-            Divider()
             places
             Divider()
+                .padding(.horizontal, 18)
             controls
         }
         .frame(width: 300)
-        .background(.regularMaterial)
-    }
-
-    private var header: some View {
-        HStack(spacing: 12) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .fill(model.isOn ? Color.accentColor.opacity(0.16) : Color.secondary.opacity(0.10))
-                Image(systemName: model.isOn ? "waveform.path" : "waveform.path.badge.minus")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(model.isOn ? Color.accentColor : Color.secondary)
+        .background {
+            if reduceTransparency {
+                Color(nsColor: .windowBackgroundColor)
+            } else {
+                Rectangle().fill(.regularMaterial)
             }
-            .frame(width: 26, height: 26)
-
-            Text("Fragmentary")
-                .font(.system(size: 12, weight: .semibold))
-
-            Spacer()
-
-            Toggle("", isOn: Binding(
-                get: { model.isOn },
-                set: { _ in model.toggle() }
-            ))
-            .toggleStyle(.switch)
-            .labelsHidden()
-            .disabled(model.state == .starting)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 7)
     }
 
     private var places: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("PLACE")
-                .font(.system(size: 12, weight: .semibold))
-                .tracking(0.8)
-                .foregroundStyle(.secondary)
-
             ForEach(Place.allCases) { place in
                 PlaceRow(
-                    place: place,
-                    isSelected: model.selectedPlace == place
+                    title: place.title,
+                    symbol: place.symbol,
+                    isSelected: model.isOn && model.selectedPlace == place
                 ) {
                     model.selectedPlace = place
+                    model.turnOn()
                 }
+            }
+            PlaceRow(title: "No filter", symbol: "speaker.wave.2", isSelected: model.state == .off, selectionColor: .gray) {
+                model.turnOff()
             }
         }
         .padding(10)
@@ -83,10 +61,9 @@ struct PlacePopoverView: View {
             }
 
             HStack(spacing: 10) {
-                Image(systemName: "circle.lefthalf.filled")
-                    .frame(width: 20)
                 Text("Presence")
                 Slider(value: $model.blend, in: 0...1)
+                    .disabled(!model.isOn)
                 Text("\(Int(model.blend * 100))%")
                     .monospacedDigit()
                     .frame(width: 34, alignment: .trailing)
@@ -96,6 +73,7 @@ struct PlacePopoverView: View {
             .padding(.horizontal, 8)
 
             Divider()
+                .padding(.horizontal, 8)
 
             QuitMenuRow {
                 NSApplication.shared.terminate(nil)

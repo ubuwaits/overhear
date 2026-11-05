@@ -13,13 +13,13 @@ enum Place: CaseIterable, Identifiable, Sendable {
 
     var title: String {
         switch self {
-        case .afterClosing: "In an empty mall"
-        case .cinemaAfterCredits: "At the movies"
-        case .openShutters: "Through an open window"
-        case .thinWall: "Through a thin wall"
-        case .hotelCorridor: "In a hotel corridor"
-        case .carParkAtDawn: "In a parking garage"
-        case .kitchenRadio1979: "Through a kitchen radio"
+        case .afterClosing: "Empty mall"
+        case .cinemaAfterCredits: "Movie theater"
+        case .openShutters: "Open window"
+        case .thinWall: "Thin wall"
+        case .hotelCorridor: "Hotel corridor"
+        case .carParkAtDawn: "Parking garage"
+        case .kitchenRadio1979: "Kitchen radio"
         }
     }
 

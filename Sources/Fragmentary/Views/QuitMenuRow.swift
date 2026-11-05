@@ -8,16 +8,8 @@ struct QuitMenuRow: View {
     var body: some View {
         Button(action: quit) {
             HStack(spacing: 10) {
-                Image(systemName: "power")
-                    .frame(width: 20)
                 Text("Quit Fragmentary")
                 Spacer()
-                Text("⌘Q")
-                    .foregroundStyle(
-                        isHovered
-                            ? Color.white.opacity(0.75)
-                            : Color.secondary
-                    )
             }
             .padding(.horizontal, 8)
             .frame(maxWidth: .infinity, minHeight: 30, alignment: .leading)

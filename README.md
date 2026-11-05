@@ -4,13 +4,13 @@ Fragmentary is a small macOS menu-bar app that places whatever is playing on the
 
 The app includes:
 
-- **In an empty mall** — an empty shopping arcade at night
-- **At the movies** — a dark, absorptive auditorium
-- **Through an open window** — music crossing an Italian square
-- **Through a thin wall** — the room next door, just audible
-- **In a hotel corridor** — music leaking beneath a distant door
-- **In a parking garage** — bright reflections across concrete decks
-- **Through a kitchen radio** — narrow, worn domestic-speaker reproduction
+- **Empty mall** — an empty shopping arcade at night
+- **Movie theater** — a dark, absorptive auditorium
+- **Open window** — music crossing an Italian square
+- **Thin wall** — the room next door, just audible
+- **Hotel corridor** — music leaking beneath a distant door
+- **Parking garage** — bright reflections across concrete decks
+- **Kitchen radio** — narrow, worn domestic-speaker reproduction
 
 It uses a macOS Core Audio process tap and processes capture and playback on
 the same hardware-clocked callback. No audio is recorded, stored, or sent
