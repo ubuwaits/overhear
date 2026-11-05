@@ -569,6 +569,7 @@ void FragmentaryDSPProcessInterleavedStereo(
     }
 }
 
+#ifdef __APPLE__
 static bool readStereoFrame(const AudioBufferList *list, uint32_t frame, float *left, float *right) {
     if (list == NULL || list->mNumberBuffers == 0) {
         return false;
@@ -670,3 +671,4 @@ void FragmentaryDSPProcess(
         }
     }
 }
+#endif

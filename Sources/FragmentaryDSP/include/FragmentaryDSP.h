@@ -1,7 +1,9 @@
 #ifndef FragmentaryDSP_h
 #define FragmentaryDSP_h
 
+#ifdef __APPLE__
 #include <AudioToolbox/AudioToolbox.h>
+#endif
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -25,12 +27,14 @@ void FragmentaryDSPDestroy(FragmentaryDSP *dsp);
 void FragmentaryDSPSetPlace(FragmentaryDSP *dsp, FragmentaryPlace place);
 void FragmentaryDSPSetBlend(FragmentaryDSP *dsp, float blend);
 
+#ifdef __APPLE__
 void FragmentaryDSPProcess(
     FragmentaryDSP *dsp,
     const AudioBufferList *input,
     AudioBufferList *output,
     uint32_t frameCount
 );
+#endif
 
 void FragmentaryDSPProcessInterleavedStereo(
     FragmentaryDSP *dsp,

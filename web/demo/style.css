@@ -1,0 +1,60 @@
+:root {
+  color-scheme: dark;
+  font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #fafafa;
+  background: #0a0a0a;
+  --border: #262626;
+  --muted: #a3a3a3;
+  --track: #404040;
+}
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100svh; display: grid; place-items: center; padding: 24px 16px; }
+main { width: min(100%, 460px); }
+.player {
+  display: grid; gap: 24px; padding: 24px;
+  background: #171717; border: 1px solid var(--border); border-radius: 16px;
+  box-shadow: 0 8px 30px #0003;
+}
+audio { display: none; }
+.transport { display: flex; align-items: center; gap: 14px; }
+svg { width: 18px; height: 18px; display: block; fill: currentColor; }
+button { font: inherit; color: inherit; cursor: pointer; transition: background-color 120ms, color 120ms; }
+button.play {
+  width: 42px; height: 42px; flex: 0 0 42px; border: 0; border-radius: 50%;
+  display: grid; place-items: center; padding: 0; background: #fafafa; color: #171717;
+}
+button.play:hover { background: #d4d4d4; }
+.timeline { flex: 1; min-width: 0; }
+.track { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; margin-bottom: 7px; }
+.track > span:first-child { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.time { white-space: nowrap; color: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; }
+.time-divider { color: #525252; }
+.volume { display: flex; align-items: center; gap: 3px; }
+.volume button { display: grid; place-items: center; border: 0; border-radius: 6px; padding: 6px; background: transparent; color: var(--muted); }
+.volume button:hover { background: #262626; color: #fafafa; }
+.volume button[aria-pressed=true] .sound-waves { visibility: hidden; }
+.volume input[type=range] { width: 36px; }
+input[type=range] { appearance: none; -webkit-appearance: none; display: block; width: 100%; height: 20px; margin: 0; background: transparent; cursor: pointer; }
+input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 4px; background: linear-gradient(to right, #e5e5e5 var(--progress,0%), var(--track) var(--progress,0%)); }
+input[type=range]::-webkit-slider-thumb { appearance: none; -webkit-appearance: none; width: 11px; height: 11px; margin-top: -3.5px; border: 2px solid #e5e5e5; border-radius: 50%; background: #171717; }
+input[type=range]::-moz-range-track { height: 4px; border-radius: 4px; background: var(--track); }
+input[type=range]::-moz-range-progress { height: 4px; border-radius: 4px; background: #e5e5e5; }
+input[type=range]::-moz-range-thumb { width: 7px; height: 7px; border: 2px solid #e5e5e5; border-radius: 50%; background: #171717; }
+input[type=range]:disabled { opacity: .3; cursor: default; }
+button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid #a3a3a3; outline-offset: 4px; }
+#status { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; margin: 12px 0 0; }
+#status:empty { display: none; }
+fieldset { border: 0; border-top: 1px solid var(--border); padding: 20px 0 0; margin: 0; min-width: 0; }
+#filters { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+#filters button { text-align: left; padding: 9px 12px; border: 1px solid transparent; border-radius: 7px; background: transparent; color: var(--muted); font-size: 12px; }
+#filters button:hover { background: #262626; color: #fafafa; }
+#filters button[aria-pressed=true] { border-color: #525252; background: #262626; color: #fafafa; }
+button:disabled { cursor: default; opacity: .4; }
+.presence { border-top: 1px solid var(--border); padding-top: 20px; display: flex; gap: 16px; align-items: center; font-size: 12px; color: var(--muted); }
+.presence input { flex: 1; min-width: 0; }
+output { width: 34px; text-align: right; font-size: 11px; font-variant-numeric: tabular-nums; }
+footer { margin: 16px 10px 0; text-align: center; font-size: 10px; line-height: 1.7; color: #737373; }
+a { color: inherit; text-decoration-color: #404040; text-underline-offset: 3px; }
+a:hover { color: #d4d4d4; }
+@media(max-width:400px) { .player { padding: 20px 16px; } .transport { gap: 10px; } .volume input[type=range] { display: none; } }
+@media(prefers-reduced-motion:reduce) { button { transition: none; } }

@@ -1,0 +1,14 @@
+{
+  "name": "fragmentary-web",
+  "private": true,
+  "type": "module",
+  "exports": "./lib/player.js",
+  "files": ["lib"],
+  "scripts": {
+    "dev": "node server.mjs",
+    "build": "node release.mjs",
+    "build:dsp": "sh build.sh",
+    "test": "node --test test/*.test.mjs",
+    "test:browser": "node test/browser.mjs"
+  }
+}
