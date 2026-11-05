@@ -9,8 +9,8 @@ try {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto('http://127.0.0.1:4173/');
-  await page.waitForFunction(() => window.fragmentary);
-  assert.equal(await page.evaluate(() => window.fragmentary.filter), 'open-window');
+  await page.waitForFunction(() => window.overhear);
+  assert.equal(await page.evaluate(() => window.overhear.filter), 'open-window');
   assert.equal(await page.getByRole('button', { name: 'Open window', exact: true }).getAttribute('aria-pressed'), 'true');
   assert.ok(await page.locator('#presence').isEnabled());
   assert.equal(await page.locator('input[type=file]').count(), 0);
@@ -19,7 +19,7 @@ try {
   await page.getByRole('button', { name: 'Play', exact: true }).click();
   await page.waitForFunction(() => document.querySelector('audio').currentTime > 0.1);
   await page.evaluate(() => {
-    const p = window.fragmentary;
+    const p = window.overhear;
     window.outputMeter = p.context.createAnalyser();
     p.node.connect(window.outputMeter);
   });
@@ -28,7 +28,7 @@ try {
     window.outputMeter.getFloatTimeDomainData(samples);
     return samples.some(value => Math.abs(value) > 0.001);
   });
-  const state = await page.evaluate(() => ({ context: window.fragmentary.context.state, filter: window.fragmentary.filter, error: document.querySelector('#status').textContent }));
+  const state = await page.evaluate(() => ({ context: window.overhear.context.state, filter: window.overhear.filter, error: document.querySelector('#status').textContent }));
   assert.equal(state.context, 'running'); assert.equal(state.filter, 'empty-mall');
   assert.ok(!state.error.includes('failed'));
   await page.getByRole('button', { name: 'Pause', exact: true }).click();
@@ -44,6 +44,6 @@ try {
   await page.setViewportSize({ width: 390, height: 844 });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   assert.deepEqual(errors, []);
-  await page.screenshot({ path: '/private/tmp/fragmentary-web.png', fullPage: true });
+  await page.screenshot({ path: '/private/tmp/overhear-web.png', fullPage: true });
   console.log('Bundled audio playback, AudioWorklet, selection, bypass, no upload, and mobile layout passed.');
 } finally { await browser.close(); }

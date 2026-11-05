@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="${0:A:h:h}"
-APP_NAME="Fragmentary"
+APP_NAME="Overhear"
 APP_BUNDLE="$ROOT_DIR/dist/$APP_NAME.app"
 BUILD_MODE="release"
 ACTION="run"
@@ -21,7 +21,7 @@ for argument in "$@"; do
 done
 
 if [[ "$ACTION" == "logs" ]]; then
-    /usr/bin/log stream --style compact --predicate 'subsystem == "com.chadwin.fragmentary"'
+    /usr/bin/log stream --style compact --predicate 'subsystem == "com.chadwin.overhear"'
     exit 0
 fi
 
@@ -36,7 +36,7 @@ EXECUTABLE_PATH="$(swift build -c "$BUILD_MODE" --show-bin-path)/$APP_NAME"
 /bin/cp "$EXECUTABLE_PATH" "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
 /bin/cp "$ROOT_DIR/Config/Info.plist" "$APP_BUNDLE/Contents/Info.plist"
 /usr/bin/codesign --force --deep --sign - \
-    --entitlements "$ROOT_DIR/Config/Fragmentary.entitlements" \
+    --entitlements "$ROOT_DIR/Config/Overhear.entitlements" \
     "$APP_BUNDLE"
 
 if [[ "$ACTION" == "verify" ]]; then

@@ -1,4 +1,4 @@
-# Fragmentary browser player
+# Overhear browser player
 
 A demonstration using the **same C DSP** as the Mac app, compiled to WebAssembly and run in an AudioWorklet. The demo plays a bundled track and has no upload interface. The embedding API can still accept a URL or Blob. No backend or account is needed.
 
@@ -14,7 +14,7 @@ From `web`, run `npm run dev`, then open http://127.0.0.1:4173/demo/. Serve over
 
 ## Layout and release
 
-- `lib/`: reusable JavaScript player API, AudioWorklet, and compiled `fragmentary.wasm`. No UI or music dependencies.
+- `lib/`: reusable JavaScript player API, AudioWorklet, and compiled `overhear.wasm`. No UI or music dependencies.
 - `demo/`: standalone dark player UI and licensed sample recording. Imports the library through `../lib/player.js`.
 - `test/`: DSP and browser integration checks.
 - `server.mjs`: development server with audio range support; serves only the demo and library.
@@ -30,8 +30,8 @@ To rebuild DSP changes, install Emscripten and run `sh web/build.sh` from the re
 ```html
 <audio id="audio" controls></audio>
 <script type="module">
-import { FragmentaryPlayer, filters } from './lib/player.js';
-const player = await FragmentaryPlayer.create(document.querySelector('#audio'));
+import { OverhearPlayer, filters } from './lib/player.js';
+const player = await OverhearPlayer.create(document.querySelector('#audio'));
 player.load('/music/example.mp3'); // Or a File/Blob from an upload input.
 player.setFilter('empty-mall');
 player.setPresence(0.8);
@@ -42,6 +42,6 @@ player.setPresence(0.8);
 </script>
 ```
 
-`filters` lists stable IDs and display names; `none` bypasses processing. Presence accepts numbers from 0 to 1. Use the audio element's properties and standard events for seeking, volume and duration; `fragmentaryerror` reports a processing failure. The demo supplies custom controls; the library also works with native audio controls. Create one player per audio element. Dispose before discarding it. `create` accepts `{ assetBase: URL }` to relocate the worklet and wasm assets.
+`filters` lists stable IDs and display names; `none` bypasses processing. Presence accepts numbers from 0 to 1. Use the audio element's properties and standard events for seeking, volume and duration; `overhearerror` reports a processing failure. The demo supplies custom controls; the library also works with native audio controls. Create one player per audio element. Dispose before discarding it. `create` accepts `{ assetBase: URL }` to relocate the worklet and wasm assets.
 
 Playback must begin with a user gesture. Remote audio URLs need CORS permission. File formats depend on the browser's decoders. This version processes one clip, not system audio, and is an embedding JavaScript API rather than a server upload API. No filter switching fade or offline export is provided yet.

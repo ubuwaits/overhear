@@ -35,4 +35,4 @@ createServer(async (req, res) => {
     res.writeHead(req.headers.range ? 206 : 200, headers);
     res.end(req.method === 'HEAD' ? undefined : body.subarray(start, end + 1));
   } catch { res.writeHead(404); res.end('Not found'); }
-}).listen(4173, '127.0.0.1', () => console.log('Fragmentary: http://127.0.0.1:4173/demo/'));
+}).listen(4173, '127.0.0.1', () => console.log('Overhear: http://127.0.0.1:4173/demo/'));

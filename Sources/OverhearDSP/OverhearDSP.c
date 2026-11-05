@@ -1,4 +1,4 @@
-#include "FragmentaryDSP.h"
+#include "OverhearDSP.h"
 
 #include <math.h>
 #include <stdatomic.h>
@@ -26,7 +26,7 @@ typedef struct {
 #define LATE_TAP_COUNT 8
 #define AFTER_CLOSING_ROOM_LINE_COUNT 4
 
-struct FragmentaryDSP {
+struct OverhearDSP {
     double sampleRate;
     _Atomic int place;
     _Atomic float targetBlend;
@@ -77,7 +77,7 @@ static float clampf(float value, float lower, float upper) {
 
 static PlaceParameters parametersForPlace(int place) {
     switch (place) {
-        case FragmentaryPlaceHotelCorridor:
+        case OverhearPlaceHotelCorridor:
             return (PlaceParameters) {
                 .lowpassHz = 1550.0f,
                 .highpassHz = 165.0f,
@@ -92,7 +92,7 @@ static PlaceParameters parametersForPlace(int place) {
                 .lateMix = 0.08f,
                 .outputGain = 1.59f
             };
-        case FragmentaryPlaceCinemaAfterCredits:
+        case OverhearPlaceCinemaAfterCredits:
             return (PlaceParameters) {
                 .lowpassHz = 2700.0f,
                 .highpassHz = 60.0f,
@@ -107,7 +107,7 @@ static PlaceParameters parametersForPlace(int place) {
                 .lateMix = 0.85f,
                 .outputGain = 1.86f
             };
-        case FragmentaryPlaceCarParkAtDawn:
+        case OverhearPlaceCarParkAtDawn:
             return (PlaceParameters) {
                 .lowpassHz = 12500.0f,
                 .highpassHz = 470.0f,
@@ -122,7 +122,7 @@ static PlaceParameters parametersForPlace(int place) {
                 .lateMix = 0.52f,
                 .outputGain = 1.02f
             };
-        case FragmentaryPlaceKitchenRadio1979:
+        case OverhearPlaceKitchenRadio1979:
             return (PlaceParameters) {
                 .lowpassHz = 1950.0f,
                 .highpassHz = 650.0f,
@@ -137,7 +137,7 @@ static PlaceParameters parametersForPlace(int place) {
                 .lateMix = 0.0f,
                 .outputGain = 0.84f
             };
-        case FragmentaryPlaceOpenShutters:
+        case OverhearPlaceOpenShutters:
             return (PlaceParameters) {
                 .lowpassHz = 4000.0f,
                 .highpassHz = 410.0f,
@@ -152,7 +152,7 @@ static PlaceParameters parametersForPlace(int place) {
                 .lateMix = 0.14f,
                 .outputGain = 1.76f
             };
-        case FragmentaryPlaceThinWall:
+        case OverhearPlaceThinWall:
             return (PlaceParameters) {
                 .lowpassHz = 520.0f,
                 .highpassHz = 92.0f,
@@ -167,7 +167,7 @@ static PlaceParameters parametersForPlace(int place) {
                 .lateMix = 0.04f,
                 .outputGain = 1.23f
             };
-        case FragmentaryPlaceAfterClosing:
+        case OverhearPlaceAfterClosing:
         default:
             return (PlaceParameters) {
                 .lowpassHz = 4800.0f,
@@ -194,20 +194,20 @@ static inline uint32_t delayedIndex(uint32_t index, uint32_t capacity, uint32_t 
     return index >= delay ? index - delay : capacity - (delay - index);
 }
 
-FragmentaryDSP *FragmentaryDSPCreate(double sampleRate) {
+OverhearDSP *OverhearDSPCreate(double sampleRate) {
     if (sampleRate < 8000.0 || sampleRate > 384000.0) {
         return NULL;
     }
 
-    FragmentaryDSP *dsp = calloc(1, sizeof(FragmentaryDSP));
+    OverhearDSP *dsp = calloc(1, sizeof(OverhearDSP));
     if (dsp == NULL) {
         return NULL;
     }
 
     dsp->sampleRate = sampleRate;
-    atomic_init(&dsp->place, FragmentaryPlaceAfterClosing);
+    atomic_init(&dsp->place, OverhearPlaceAfterClosing);
     atomic_init(&dsp->targetBlend, 1.0f);
-    dsp->cachedPlace = FragmentaryPlaceAfterClosing;
+    dsp->cachedPlace = OverhearPlaceAfterClosing;
     dsp->targetParameters = parametersForPlace(dsp->cachedPlace);
 
     static const double reflectionSeconds[REFLECTION_TAP_COUNT] = {
@@ -217,7 +217,7 @@ FragmentaryDSP *FragmentaryDSPCreate(double sampleRate) {
     dsp->reflectionLeft = calloc(dsp->reflectionCapacity, sizeof(float));
     dsp->reflectionRight = calloc(dsp->reflectionCapacity, sizeof(float));
     if (dsp->reflectionLeft == NULL || dsp->reflectionRight == NULL) {
-        FragmentaryDSPDestroy(dsp);
+        OverhearDSPDestroy(dsp);
         return NULL;
     }
     for (int tap = 0; tap < REFLECTION_TAP_COUNT; tap++) {
@@ -244,7 +244,7 @@ FragmentaryDSP *FragmentaryDSPCreate(double sampleRate) {
         dsp->afterClosingRoomLine[line] =
             calloc(dsp->afterClosingRoomLineLength[line], sizeof(float));
         if (dsp->afterClosingRoomLine[line] == NULL) {
-            FragmentaryDSPDestroy(dsp);
+            OverhearDSPDestroy(dsp);
             return NULL;
         }
     }
@@ -266,7 +266,7 @@ FragmentaryDSP *FragmentaryDSPCreate(double sampleRate) {
     return dsp;
 }
 
-void FragmentaryDSPDestroy(FragmentaryDSP *dsp) {
+void OverhearDSPDestroy(OverhearDSP *dsp) {
     if (dsp == NULL) {
         return;
     }
@@ -278,13 +278,13 @@ void FragmentaryDSPDestroy(FragmentaryDSP *dsp) {
     free(dsp);
 }
 
-void FragmentaryDSPSetPlace(FragmentaryDSP *dsp, FragmentaryPlace place) {
+void OverhearDSPSetPlace(OverhearDSP *dsp, OverhearPlace place) {
     if (dsp != NULL) {
         atomic_store_explicit(&dsp->place, (int)place, memory_order_relaxed);
     }
 }
 
-void FragmentaryDSPSetBlend(FragmentaryDSP *dsp, float blend) {
+void OverhearDSPSetBlend(OverhearDSP *dsp, float blend) {
     if (dsp != NULL) {
         atomic_store_explicit(&dsp->targetBlend, clampf(blend, 0.0f, 1.0f), memory_order_relaxed);
     }
@@ -319,7 +319,7 @@ static float softLimit(float input) {
     return copysignf(limited, input);
 }
 
-static void processFrame(FragmentaryDSP *dsp, float left, float right, float *outLeft, float *outRight) {
+static void processFrame(OverhearDSP *dsp, float left, float right, float *outLeft, float *outRight) {
     float targetBlend = atomic_load_explicit(&dsp->targetBlend, memory_order_relaxed);
     if (targetBlend <= 0.0001f) {
         // Presence at zero is a bit-transparent diagnostic path through the
@@ -516,8 +516,8 @@ static void processFrame(FragmentaryDSP *dsp, float left, float right, float *ou
         (roomOutput[1] + roomOutput[3]) * 0.5f
     };
     float *selectedLate = (
-        activePlace == FragmentaryPlaceAfterClosing
-        || activePlace == FragmentaryPlaceCinemaAfterCredits
+        activePlace == OverhearPlaceAfterClosing
+        || activePlace == OverhearPlaceCinemaAfterCredits
     )
         ? afterClosingLate
         : late;
@@ -549,8 +549,8 @@ static void processFrame(FragmentaryDSP *dsp, float left, float right, float *ou
     *outRight = softLimit(dry[1] * dryGain + wet[1] * wetGain);
 }
 
-void FragmentaryDSPProcessInterleavedStereo(
-    FragmentaryDSP *dsp,
+void OverhearDSPProcessInterleavedStereo(
+    OverhearDSP *dsp,
     const float *input,
     float *output,
     uint32_t frameCount
@@ -643,8 +643,8 @@ static void clearOutput(AudioBufferList *output) {
     }
 }
 
-void FragmentaryDSPProcess(
-    FragmentaryDSP *dsp,
+void OverhearDSPProcess(
+    OverhearDSP *dsp,
     const AudioBufferList *input,
     AudioBufferList *output,
     uint32_t frameCount

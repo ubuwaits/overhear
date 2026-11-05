@@ -1,4 +1,4 @@
-import FragmentaryDSP
+import OverhearDSP
 
 enum Place: CaseIterable, Identifiable, Sendable {
     case afterClosing
@@ -35,15 +35,15 @@ enum Place: CaseIterable, Identifiable, Sendable {
         }
     }
 
-    var dspValue: FragmentaryPlace {
+    var dspValue: OverhearPlace {
         switch self {
-        case .afterClosing: FragmentaryPlaceAfterClosing
-        case .openShutters: FragmentaryPlaceOpenShutters
-        case .thinWall: FragmentaryPlaceThinWall
-        case .hotelCorridor: FragmentaryPlaceHotelCorridor
-        case .cinemaAfterCredits: FragmentaryPlaceCinemaAfterCredits
-        case .carParkAtDawn: FragmentaryPlaceCarParkAtDawn
-        case .kitchenRadio1979: FragmentaryPlaceKitchenRadio1979
+        case .afterClosing: OverhearPlaceAfterClosing
+        case .openShutters: OverhearPlaceOpenShutters
+        case .thinWall: OverhearPlaceThinWall
+        case .hotelCorridor: OverhearPlaceHotelCorridor
+        case .cinemaAfterCredits: OverhearPlaceCinemaAfterCredits
+        case .carParkAtDawn: OverhearPlaceCarParkAtDawn
+        case .kitchenRadio1979: OverhearPlaceKitchenRadio1979
         }
     }
 }

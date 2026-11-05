@@ -1,11 +1,11 @@
 import CoreAudio
 import Foundation
-import FragmentaryDSP
+import OverhearDSP
 import os
 
 final class SystemAudioEngine: @unchecked Sendable {
-    private let logger = Logger(subsystem: "com.chadwin.fragmentary", category: "audio")
-    private let controlQueue = DispatchQueue(label: "com.chadwin.fragmentary.audio-control")
+    private let logger = Logger(subsystem: "com.chadwin.overhear", category: "audio")
+    private let controlQueue = DispatchQueue(label: "com.chadwin.overhear.audio-control")
 
     private var tapID = AudioObjectID(kAudioObjectUnknown)
     private var aggregateDeviceID = AudioObjectID(kAudioObjectUnknown)
@@ -63,7 +63,7 @@ final class SystemAudioEngine: @unchecked Sendable {
 
     private func startSynchronously(place: Place, blend: Double) throws {
         guard #available(macOS 14.2, *) else {
-            throw CoreAudioFailure.unavailable("Fragmentary requires macOS 14.2 or later.")
+            throw CoreAudioFailure.unavailable("Overhear requires macOS 14.2 or later.")
         }
 
         let outputDeviceID = try readDefaultOutputDevice()
@@ -78,14 +78,14 @@ final class SystemAudioEngine: @unchecked Sendable {
         // deviceUID nil makes this a true global mix; pairing a device UID with no
         // stream index can produce a successful status with an unknown tap ID.
         let description = CATapDescription()
-        description.name = "Fragmentary System Mix"
+        description.name = "Overhear System Mix"
         description.uuid = UUID()
         description.processes = excludedProcesses
         description.isExclusive = true
         description.isMixdown = true
         description.isMono = false
         description.isPrivate = true
-        // Fragmentary supplies the only audible copy through its own output
+        // Overhear supplies the only audible copy through its own output
         // engine. Conditional muting can briefly expose the original hardware
         // route between tap reads, producing comb-filtering against the
         // processed copy that is especially obvious on sustained music.
@@ -104,9 +104,9 @@ final class SystemAudioEngine: @unchecked Sendable {
         tapID = newTapID
 
         let tapUID = try readCFString(tapID, selector: kAudioTapPropertyUID)
-        let aggregateUID = "com.chadwin.fragmentary.aggregate.\(UUID().uuidString)"
+        let aggregateUID = "com.chadwin.overhear.aggregate.\(UUID().uuidString)"
         let aggregateDescription: [String: Any] = [
-            kAudioAggregateDeviceNameKey: "Fragmentary Private Output",
+            kAudioAggregateDeviceNameKey: "Overhear Private Output",
             kAudioAggregateDeviceUIDKey: aggregateUID,
             kAudioAggregateDeviceMainSubDeviceKey: outputUID,
             kAudioAggregateDeviceIsPrivateKey: true,
@@ -139,12 +139,12 @@ final class SystemAudioEngine: @unchecked Sendable {
             throw CoreAudioFailure.unavailable("The current output format is not supported yet.")
         }
 
-        guard let newProcessor = FragmentaryDSPCreate(tapFormat.mSampleRate) else {
+        guard let newProcessor = OverhearDSPCreate(tapFormat.mSampleRate) else {
             throw CoreAudioFailure.unavailable("The environmental audio processor could not be created.")
         }
         processor = newProcessor
-        FragmentaryDSPSetPlace(newProcessor, place.dspValue)
-        FragmentaryDSPSetBlend(newProcessor, Float(blend))
+        OverhearDSPSetPlace(newProcessor, place.dspValue)
+        OverhearDSPSetBlend(newProcessor, Float(blend))
 
         var newIOProcID: AudioDeviceIOProcID?
         let processorForCallback = newProcessor
@@ -157,7 +157,7 @@ final class SystemAudioEngine: @unchecked Sendable {
                 let inputFrameCount = Self.frameCount(from: inputData)
                 let outputFrameCount = Self.frameCount(from: outputData)
                 let frameCount = min(inputFrameCount, outputFrameCount)
-                FragmentaryDSPProcess(
+                OverhearDSPProcess(
                     processorForCallback,
                     inputData,
                     outputData,
@@ -183,12 +183,12 @@ final class SystemAudioEngine: @unchecked Sendable {
 
     private func setPlaceSynchronously(_ place: Place) {
         guard let processor else { return }
-        FragmentaryDSPSetPlace(processor, place.dspValue)
+        OverhearDSPSetPlace(processor, place.dspValue)
     }
 
     private func setBlendSynchronously(_ blend: Double) {
         guard let processor else { return }
-        FragmentaryDSPSetBlend(processor, Float(blend))
+        OverhearDSPSetBlend(processor, Float(blend))
     }
 
     private func stopSynchronously() {
@@ -218,7 +218,7 @@ final class SystemAudioEngine: @unchecked Sendable {
             Thread.sleep(forTimeInterval: 0.12)
         }
         if let processor {
-            FragmentaryDSPDestroy(processor)
+            OverhearDSPDestroy(processor)
             self.processor = nil
         }
         logger.notice("Environmental audio stopped")

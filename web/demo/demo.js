@@ -1,10 +1,10 @@
-import { FragmentaryPlayer, filters } from '../lib/player.js';
+import { OverhearPlayer, filters } from '../lib/player.js';
 const audio = document.querySelector('audio');
 const status = document.querySelector('#status');
 const presence = document.querySelector('#presence');
 try {
-  const player = await FragmentaryPlayer.create(audio);
-  window.fragmentary = player;
+  const player = await OverhearPlayer.create(audio);
+  window.overhear = player;
   player.setFilter('open-window');
   presence.disabled = false;
   const play = document.querySelector('#play');
@@ -76,5 +76,5 @@ try {
   };
   paintRange(presence);
   audio.addEventListener('error', () => { status.textContent = 'Could not load the demo audio. Please reload.'; });
-  audio.addEventListener('fragmentaryerror', event => { status.textContent = event.detail; });
+  audio.addEventListener('overhearerror', event => { status.textContent = event.detail; });
 } catch (error) { status.textContent = `Could not start: ${error.message}. Use a browser with AudioWorklet support on localhost or HTTPS.`; }

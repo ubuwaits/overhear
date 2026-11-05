@@ -1,14 +1,14 @@
-import FragmentaryDSP
+import OverhearDSP
 import Testing
 
-private let allPlaces: [FragmentaryPlace] = [
-    FragmentaryPlaceAfterClosing,
-    FragmentaryPlaceCinemaAfterCredits,
-    FragmentaryPlaceOpenShutters,
-    FragmentaryPlaceThinWall,
-    FragmentaryPlaceHotelCorridor,
-    FragmentaryPlaceCarParkAtDawn,
-    FragmentaryPlaceKitchenRadio1979
+private let allPlaces: [OverhearPlace] = [
+    OverhearPlaceAfterClosing,
+    OverhearPlaceCinemaAfterCredits,
+    OverhearPlaceOpenShutters,
+    OverhearPlaceThinWall,
+    OverhearPlaceHotelCorridor,
+    OverhearPlaceCarParkAtDawn,
+    OverhearPlaceKitchenRadio1979
 ]
 
 private func representativeMusic(frameCount: Int, sampleRate: Float) -> [Float] {
@@ -41,11 +41,11 @@ private func rms(_ samples: ArraySlice<Float>) -> Float {
 
 @Test("Zero presence is an exact transport bypass")
 func zeroPresenceIsExactBypass() {
-    let processor = FragmentaryDSPCreate(44_100)
+    let processor = OverhearDSPCreate(44_100)
     #expect(processor != nil)
     guard let processor else { return }
-    defer { FragmentaryDSPDestroy(processor) }
-    FragmentaryDSPSetBlend(processor, 0)
+    defer { OverhearDSPDestroy(processor) }
+    OverhearDSPSetBlend(processor, 0)
 
     let input: [Float] = [
         -0.95, 0.73,
@@ -56,7 +56,7 @@ func zeroPresenceIsExactBypass() {
     var output = Array(repeating: Float.zero, count: input.count)
     input.withUnsafeBufferPointer { inputBuffer in
         output.withUnsafeMutableBufferPointer { outputBuffer in
-            FragmentaryDSPProcessInterleavedStereo(
+            OverhearDSPProcessInterleavedStereo(
                 processor,
                 inputBuffer.baseAddress,
                 outputBuffer.baseAddress,
@@ -77,17 +77,17 @@ func environmentalProcessingMaintainsLevel() {
     let inputLevel = rms(input[measuredStart...])
 
     for place in allPlaces {
-        let processor = FragmentaryDSPCreate(Double(sampleRate))
+        let processor = OverhearDSPCreate(Double(sampleRate))
         #expect(processor != nil)
         guard let processor else { continue }
-        defer { FragmentaryDSPDestroy(processor) }
-        FragmentaryDSPSetPlace(processor, place)
-        FragmentaryDSPSetBlend(processor, 1)
+        defer { OverhearDSPDestroy(processor) }
+        OverhearDSPSetPlace(processor, place)
+        OverhearDSPSetBlend(processor, 1)
 
         var output = Array(repeating: Float.zero, count: input.count)
         input.withUnsafeBufferPointer { inputBuffer in
             output.withUnsafeMutableBufferPointer { outputBuffer in
-                FragmentaryDSPProcessInterleavedStereo(
+                OverhearDSPProcessInterleavedStereo(
                     processor,
                     inputBuffer.baseAddress,
                     outputBuffer.baseAddress,
@@ -111,17 +111,17 @@ func partialPresenceMaintainsLevel() {
     let inputLevel = rms(input[measuredStart...])
 
     for place in allPlaces {
-        let processor = FragmentaryDSPCreate(Double(sampleRate))
+        let processor = OverhearDSPCreate(Double(sampleRate))
         #expect(processor != nil)
         guard let processor else { continue }
-        defer { FragmentaryDSPDestroy(processor) }
-        FragmentaryDSPSetPlace(processor, place)
-        FragmentaryDSPSetBlend(processor, 0.5)
+        defer { OverhearDSPDestroy(processor) }
+        OverhearDSPSetPlace(processor, place)
+        OverhearDSPSetBlend(processor, 0.5)
 
         var output = Array(repeating: Float.zero, count: input.count)
         input.withUnsafeBufferPointer { inputBuffer in
             output.withUnsafeMutableBufferPointer { outputBuffer in
-                FragmentaryDSPProcessInterleavedStereo(
+                OverhearDSPProcessInterleavedStereo(
                     processor,
                     inputBuffer.baseAddress,
                     outputBuffer.baseAddress,
@@ -151,17 +151,17 @@ func fullPresenceRetainsSourceDetail() {
     let inputLevel = rms(input[measuredStart...])
 
     for place in allPlaces {
-        let processor = FragmentaryDSPCreate(Double(sampleRate))
+        let processor = OverhearDSPCreate(Double(sampleRate))
         #expect(processor != nil)
         guard let processor else { continue }
-        defer { FragmentaryDSPDestroy(processor) }
-        FragmentaryDSPSetPlace(processor, place)
-        FragmentaryDSPSetBlend(processor, 1)
+        defer { OverhearDSPDestroy(processor) }
+        OverhearDSPSetPlace(processor, place)
+        OverhearDSPSetBlend(processor, 1)
 
         var output = Array(repeating: Float.zero, count: input.count)
         input.withUnsafeBufferPointer { inputBuffer in
             output.withUnsafeMutableBufferPointer { outputBuffer in
-                FragmentaryDSPProcessInterleavedStereo(
+                OverhearDSPProcessInterleavedStereo(
                     processor,
                     inputBuffer.baseAddress,
                     outputBuffer.baseAddress,
@@ -183,17 +183,17 @@ func kitchenRadioAvoidsSampleHoldArtifacts() {
         return [sample, sample]
     }
 
-    let processor = FragmentaryDSPCreate(Double(sampleRate))
+    let processor = OverhearDSPCreate(Double(sampleRate))
     #expect(processor != nil)
     guard let processor else { return }
-    defer { FragmentaryDSPDestroy(processor) }
-    FragmentaryDSPSetPlace(processor, FragmentaryPlaceKitchenRadio1979)
-    FragmentaryDSPSetBlend(processor, 1)
+    defer { OverhearDSPDestroy(processor) }
+    OverhearDSPSetPlace(processor, OverhearPlaceKitchenRadio1979)
+    OverhearDSPSetBlend(processor, 1)
 
     var output = Array(repeating: Float.zero, count: input.count)
     input.withUnsafeBufferPointer { inputBuffer in
         output.withUnsafeMutableBufferPointer { outputBuffer in
-            FragmentaryDSPProcessInterleavedStereo(
+            OverhearDSPProcessInterleavedStereo(
                 processor,
                 inputBuffer.baseAddress,
                 outputBuffer.baseAddress,
@@ -218,17 +218,17 @@ func allPlacesProduceFiniteAudio() {
     }
 
     for place in allPlaces {
-        let processor = FragmentaryDSPCreate(48_000)
+        let processor = OverhearDSPCreate(48_000)
         #expect(processor != nil)
         guard let processor else { continue }
-        defer { FragmentaryDSPDestroy(processor) }
+        defer { OverhearDSPDestroy(processor) }
 
-        FragmentaryDSPSetPlace(processor, place)
-        FragmentaryDSPSetBlend(processor, 1)
+        OverhearDSPSetPlace(processor, place)
+        OverhearDSPSetBlend(processor, 1)
         var output = Array(repeating: Float.zero, count: input.count)
         input.withUnsafeBufferPointer { inputBuffer in
             output.withUnsafeMutableBufferPointer { outputBuffer in
-                FragmentaryDSPProcessInterleavedStereo(
+                OverhearDSPProcessInterleavedStereo(
                     processor,
                     inputBuffer.baseAddress,
                     outputBuffer.baseAddress,
@@ -252,17 +252,17 @@ func loudMaterialDoesNotHardClip() {
     }
 
     for place in allPlaces {
-        let processor = FragmentaryDSPCreate(48_000)
+        let processor = OverhearDSPCreate(48_000)
         #expect(processor != nil)
         guard let processor else { continue }
-        defer { FragmentaryDSPDestroy(processor) }
-        FragmentaryDSPSetPlace(processor, place)
-        FragmentaryDSPSetBlend(processor, 1)
+        defer { OverhearDSPDestroy(processor) }
+        OverhearDSPSetPlace(processor, place)
+        OverhearDSPSetBlend(processor, 1)
 
         var output = Array(repeating: Float.zero, count: input.count)
         input.withUnsafeBufferPointer { inputBuffer in
             output.withUnsafeMutableBufferPointer { outputBuffer in
-                FragmentaryDSPProcessInterleavedStereo(
+                OverhearDSPProcessInterleavedStereo(
                     processor,
                     inputBuffer.baseAddress,
                     outputBuffer.baseAddress,
@@ -281,17 +281,17 @@ func loudMaterialDoesNotHardClip() {
 @Test("Reflections remain quieter than the source transient")
 func reflectionsDoNotBecomeDiscreteEchoes() {
     for place in [
-        FragmentaryPlaceOpenShutters,
-        FragmentaryPlaceHotelCorridor,
-        FragmentaryPlaceCinemaAfterCredits,
-        FragmentaryPlaceCarParkAtDawn
+        OverhearPlaceOpenShutters,
+        OverhearPlaceHotelCorridor,
+        OverhearPlaceCinemaAfterCredits,
+        OverhearPlaceCarParkAtDawn
     ] {
-        let processor = FragmentaryDSPCreate(48_000)
+        let processor = OverhearDSPCreate(48_000)
         #expect(processor != nil)
         guard let processor else { continue }
-        defer { FragmentaryDSPDestroy(processor) }
-        FragmentaryDSPSetPlace(processor, place)
-        FragmentaryDSPSetBlend(processor, 1)
+        defer { OverhearDSPDestroy(processor) }
+        OverhearDSPSetPlace(processor, place)
+        OverhearDSPSetBlend(processor, 1)
 
         // Let the normal place-change smoothing settle so the source transient
         // and its later reflections are measured at the same output gain.
@@ -300,7 +300,7 @@ func reflectionsDoNotBecomeDiscreteEchoes() {
         var settlingOutput = settlingInput
         settlingInput.withUnsafeBufferPointer { inputBuffer in
             settlingOutput.withUnsafeMutableBufferPointer { outputBuffer in
-                FragmentaryDSPProcessInterleavedStereo(
+                OverhearDSPProcessInterleavedStereo(
                     processor,
                     inputBuffer.baseAddress,
                     outputBuffer.baseAddress,
@@ -316,7 +316,7 @@ func reflectionsDoNotBecomeDiscreteEchoes() {
         var output = Array(repeating: Float.zero, count: input.count)
         input.withUnsafeBufferPointer { inputBuffer in
             output.withUnsafeMutableBufferPointer { outputBuffer in
-                FragmentaryDSPProcessInterleavedStereo(
+                OverhearDSPProcessInterleavedStereo(
                     processor,
                     inputBuffer.baseAddress,
                     outputBuffer.baseAddress,
@@ -333,11 +333,11 @@ func reflectionsDoNotBecomeDiscreteEchoes() {
 
 @Test("AudioBufferList processing clears an unwritten output tail")
 func audioBufferListProcessingClearsOutputTail() {
-    let processor = FragmentaryDSPCreate(48_000)
+    let processor = OverhearDSPCreate(48_000)
     #expect(processor != nil)
     guard let processor else { return }
-    defer { FragmentaryDSPDestroy(processor) }
-    FragmentaryDSPSetBlend(processor, 0)
+    defer { OverhearDSPDestroy(processor) }
+    OverhearDSPSetBlend(processor, 0)
 
     var input: [Float] = [0.2, -0.2, 0.4, -0.4]
     var output = Array(repeating: Float(1), count: 8)
@@ -359,7 +359,7 @@ func audioBufferListProcessingClearsOutputTail() {
                     mData: outputBytes.baseAddress
                 )
             )
-            FragmentaryDSPProcess(processor, &inputList, &outputList, 2)
+            OverhearDSPProcess(processor, &inputList, &outputList, 2)
         }
     }
 

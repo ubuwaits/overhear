@@ -9,22 +9,22 @@ export const filters = Object.freeze([
   { id: 'none', name: 'No filter', preset: null }
 ].map(Object.freeze));
 
-export class FragmentaryPlayer {
+export class OverhearPlayer {
   static async create(audio, { assetBase = new URL('./', import.meta.url) } = {}) {
     if (!(audio instanceof HTMLAudioElement)) throw new TypeError('Expected an HTMLAudioElement');
     const context = new AudioContext();
     try {
-      const response = await fetch(new URL('fragmentary.wasm', assetBase));
+      const response = await fetch(new URL('overhear.wasm', assetBase));
       if (!response.ok) throw new Error('Could not load the audio engine');
       const wasmBytes = await response.arrayBuffer();
       await context.audioWorklet.addModule(new URL('worklet.js', assetBase));
-      const node = new AudioWorkletNode(context, 'fragmentary', {
+      const node = new AudioWorkletNode(context, 'overhear', {
         numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2], processorOptions: { wasmBytes }
       });
       audio.crossOrigin = 'anonymous';
       const source = context.createMediaElementSource(audio);
       source.connect(node).connect(context.destination);
-      return new FragmentaryPlayer(audio, context, source, node);
+      return new OverhearPlayer(audio, context, source, node);
     } catch (error) { await context.close(); throw error; }
   }
   constructor(audio, context, source, node) {
@@ -40,7 +40,7 @@ export class FragmentaryPlayer {
     }
     node.onprocessorerror = () => {
       audio.pause();
-      audio.dispatchEvent(new CustomEvent('fragmentaryerror', { detail: 'Audio processing failed. Reload the player.' }));
+      audio.dispatchEvent(new CustomEvent('overhearerror', { detail: 'Audio processing failed. Reload the player.' }));
     };
   }
   load(fileOrURL) {

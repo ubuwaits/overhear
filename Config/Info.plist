@@ -5,13 +5,13 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>en</string>
     <key>CFBundleExecutable</key>
-    <string>Fragmentary</string>
+    <string>Overhear</string>
     <key>CFBundleIdentifier</key>
-    <string>com.chadwin.fragmentary</string>
+    <string>com.chadwin.overhear</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>Fragmentary</string>
+    <string>Overhear</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
@@ -23,7 +23,7 @@
     <key>LSUIElement</key>
     <true/>
     <key>NSAudioCaptureUsageDescription</key>
-    <string>Fragmentary needs access to system audio to place the sound playing on this Mac inside an imagined acoustic space.</string>
+    <string>Overhear needs access to system audio to place the sound playing on this Mac inside an imagined acoustic space.</string>
     <key>NSHumanReadableCopyright</key>
     <string>© 2026</string>
 </dict>

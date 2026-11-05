@@ -1,5 +1,5 @@
 {
-  "name": "fragmentary-web",
+  "name": "overhear-web",
   "private": true,
   "type": "module",
   "exports": "./lib/player.js",

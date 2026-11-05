@@ -1,4 +1,4 @@
-class FragmentaryProcessor extends AudioWorkletProcessor {
+class OverhearProcessor extends AudioWorkletProcessor {
   constructor({ processorOptions: { wasmBytes } }) {
     super();
     // Raw bytes also work in Safari versions that cannot clone a compiled
@@ -10,7 +10,7 @@ class FragmentaryProcessor extends AudioWorkletProcessor {
     });
     this.api = instance.exports;
     this.api._initialize?.();
-    this.processor = this.api.FragmentaryDSPCreate(sampleRate);
+    this.processor = this.api.OverhearDSPCreate(sampleRate);
     this.inputPointer = this.api.malloc(128 * 2 * 4);
     this.outputPointer = this.api.malloc(128 * 2 * 4);
     if (!this.processor || !this.inputPointer || !this.outputPointer) throw new Error('DSP allocation failed');
@@ -21,11 +21,11 @@ class FragmentaryProcessor extends AudioWorkletProcessor {
     this.port.onmessage = ({ data }) => {
       if (data.type === 'filter') {
         this.bypass = data.value === null;
-        if (!this.bypass) this.api.FragmentaryDSPSetPlace(this.processor, data.value);
+        if (!this.bypass) this.api.OverhearDSPSetPlace(this.processor, data.value);
       } else if (data.type === 'presence') {
-        this.api.FragmentaryDSPSetBlend(this.processor, data.value);
+        this.api.OverhearDSPSetBlend(this.processor, data.value);
       } else if (data.type === 'dispose') {
-        this.api.FragmentaryDSPDestroy(this.processor);
+        this.api.OverhearDSPDestroy(this.processor);
         this.api.free(this.inputPointer);
         this.api.free(this.outputPointer);
         this.disposed = true;
@@ -43,7 +43,7 @@ class FragmentaryProcessor extends AudioWorkletProcessor {
         this.input[i * 2] = left?.[offset + i] || 0;
         this.input[i * 2 + 1] = right?.[offset + i] || 0;
       }
-      this.api.FragmentaryDSPProcessInterleavedStereo(this.processor, this.inputPointer, this.outputPointer, count);
+      this.api.OverhearDSPProcessInterleavedStereo(this.processor, this.inputPointer, this.outputPointer, count);
       for (let i = 0; i < count; i++) {
         output[0][offset + i] = this.bypass ? this.input[i * 2] : this.output[i * 2];
         output[1][offset + i] = this.bypass ? this.input[i * 2 + 1] : this.output[i * 2 + 1];
@@ -52,4 +52,4 @@ class FragmentaryProcessor extends AudioWorkletProcessor {
     return true;
   }
 }
-registerProcessor('fragmentary', FragmentaryProcessor);
+registerProcessor('overhear', OverhearProcessor);

@@ -8,7 +8,7 @@ struct QuitMenuRow: View {
     var body: some View {
         Button(action: quit) {
             HStack(spacing: 10) {
-                Text("Quit Fragmentary")
+                Text("Quit Overhear")
                 Spacer()
             }
             .padding(.horizontal, 8)

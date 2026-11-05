@@ -1,6 +1,6 @@
-# Fragmentary
+# Overhear
 
-Fragmentary is a small macOS menu-bar app that places whatever is playing on the Mac inside an imagined acoustic space.
+Overhear is a small macOS menu-bar app that places whatever is playing on the Mac inside an imagined acoustic space.
 
 The app includes:
 
@@ -24,7 +24,7 @@ Requires macOS 14.2 or later and Xcode.
 ./script/build_and_run.sh --debug
 ```
 
-The first time an effect is enabled, macOS asks for **Screen & System Audio Recording** permission. If permission was denied, enable Fragmentary in System Settings → Privacy & Security → Screen & System Audio Recording, then relaunch it.
+The first time an effect is enabled, macOS asks for **Screen & System Audio Recording** permission. If permission was denied, enable Overhear in System Settings → Privacy & Security → Screen & System Audio Recording, then relaunch it.
 
 ## Verify
 

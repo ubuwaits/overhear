@@ -8,7 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 }
 
 @main
-struct FragmentaryApp: App {
+struct OverhearApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var model = AppModel()
 
@@ -17,7 +17,7 @@ struct FragmentaryApp: App {
             PlacePopoverView(model: model)
         } label: {
             Image(systemName: model.isOn ? "waveform.path" : "waveform.path.badge.minus")
-                .accessibilityLabel("Fragmentary: \(model.statusText)")
+                .accessibilityLabel("Overhear: \(model.statusText)")
         }
         .menuBarExtraStyle(.window)
     }

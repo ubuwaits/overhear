@@ -3,26 +3,26 @@
 import PackageDescription
 
 let package = Package(
-    name: "Fragmentary",
+    name: "Overhear",
     platforms: [
         .macOS("14.2")
     ],
     products: [
-        .executable(name: "Fragmentary", targets: ["Fragmentary"])
+        .executable(name: "Overhear", targets: ["Overhear"])
     ],
     targets: [
         .target(
-            name: "FragmentaryDSP",
-            path: "Sources/FragmentaryDSP",
+            name: "OverhearDSP",
+            path: "Sources/OverhearDSP",
             publicHeadersPath: "include",
             linkerSettings: [
                 .linkedFramework("AudioToolbox")
             ]
         ),
         .executableTarget(
-            name: "Fragmentary",
-            dependencies: ["FragmentaryDSP"],
-            path: "Sources/Fragmentary",
+            name: "Overhear",
+            dependencies: ["OverhearDSP"],
+            path: "Sources/Overhear",
             linkerSettings: [
                 .linkedFramework("AppKit"),
                 .linkedFramework("CoreAudio"),
@@ -30,9 +30,9 @@ let package = Package(
             ]
         ),
         .testTarget(
-            name: "FragmentaryDSPTests",
-            dependencies: ["FragmentaryDSP"],
-            path: "Tests/FragmentaryDSPTests"
+            name: "OverhearDSPTests",
+            dependencies: ["OverhearDSP"],
+            path: "Tests/OverhearDSPTests"
         )
     ]
 )
