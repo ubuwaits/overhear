@@ -13,13 +13,13 @@ extern "C" {
 typedef struct OverhearDSP OverhearDSP;
 
 typedef enum OverhearPlace {
-    OverhearPlaceAfterClosing = 0,
-    OverhearPlaceOpenShutters = 1,
+    OverhearPlaceEmptyMall = 0,
+    OverhearPlaceOpenWindow = 1,
     OverhearPlaceThinWall = 2,
     OverhearPlaceHotelCorridor = 3,
-    OverhearPlaceCinemaAfterCredits = 4,
-    OverhearPlaceCarParkAtDawn = 5,
-    OverhearPlaceKitchenRadio1979 = 6
+    OverhearPlaceMovieTheater = 4,
+    OverhearPlaceParkingGarage = 5,
+    OverhearPlaceKitchenRadio = 6
 } OverhearPlace;
 
 OverhearDSP *OverhearDSPCreate(double sampleRate);

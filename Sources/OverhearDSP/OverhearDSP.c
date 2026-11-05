@@ -24,7 +24,7 @@ typedef struct {
 #define REFLECTION_TAP_COUNT 8
 #define WINDOW_TAP_COUNT 3
 #define LATE_TAP_COUNT 8
-#define AFTER_CLOSING_ROOM_LINE_COUNT 4
+#define EMPTY_MALL_ROOM_LINE_COUNT 4
 
 struct OverhearDSP {
     double sampleRate;
@@ -65,10 +65,10 @@ struct OverhearDSP {
     uint32_t windowTapFrames[WINDOW_TAP_COUNT];
     uint32_t lateTapFrames[LATE_TAP_COUNT];
 
-    float *afterClosingRoomLine[AFTER_CLOSING_ROOM_LINE_COUNT];
-    uint32_t afterClosingRoomLineLength[AFTER_CLOSING_ROOM_LINE_COUNT];
-    uint32_t afterClosingRoomLineIndex[AFTER_CLOSING_ROOM_LINE_COUNT];
-    float afterClosingRoomDampingState[AFTER_CLOSING_ROOM_LINE_COUNT];
+    float *emptyMallRoomLine[EMPTY_MALL_ROOM_LINE_COUNT];
+    uint32_t emptyMallRoomLineLength[EMPTY_MALL_ROOM_LINE_COUNT];
+    uint32_t emptyMallRoomLineIndex[EMPTY_MALL_ROOM_LINE_COUNT];
+    float emptyMallRoomDampingState[EMPTY_MALL_ROOM_LINE_COUNT];
 };
 
 static float clampf(float value, float lower, float upper) {
@@ -92,7 +92,7 @@ static PlaceParameters parametersForPlace(int place) {
                 .lateMix = 0.08f,
                 .outputGain = 1.59f
             };
-        case OverhearPlaceCinemaAfterCredits:
+        case OverhearPlaceMovieTheater:
             return (PlaceParameters) {
                 .lowpassHz = 2700.0f,
                 .highpassHz = 60.0f,
@@ -107,7 +107,7 @@ static PlaceParameters parametersForPlace(int place) {
                 .lateMix = 0.85f,
                 .outputGain = 1.86f
             };
-        case OverhearPlaceCarParkAtDawn:
+        case OverhearPlaceParkingGarage:
             return (PlaceParameters) {
                 .lowpassHz = 12500.0f,
                 .highpassHz = 470.0f,
@@ -122,7 +122,7 @@ static PlaceParameters parametersForPlace(int place) {
                 .lateMix = 0.52f,
                 .outputGain = 1.02f
             };
-        case OverhearPlaceKitchenRadio1979:
+        case OverhearPlaceKitchenRadio:
             return (PlaceParameters) {
                 .lowpassHz = 1950.0f,
                 .highpassHz = 650.0f,
@@ -137,7 +137,7 @@ static PlaceParameters parametersForPlace(int place) {
                 .lateMix = 0.0f,
                 .outputGain = 0.84f
             };
-        case OverhearPlaceOpenShutters:
+        case OverhearPlaceOpenWindow:
             return (PlaceParameters) {
                 .lowpassHz = 4000.0f,
                 .highpassHz = 410.0f,
@@ -167,7 +167,7 @@ static PlaceParameters parametersForPlace(int place) {
                 .lateMix = 0.04f,
                 .outputGain = 1.23f
             };
-        case OverhearPlaceAfterClosing:
+        case OverhearPlaceEmptyMall:
         default:
             return (PlaceParameters) {
                 .lowpassHz = 4800.0f,
@@ -205,9 +205,9 @@ OverhearDSP *OverhearDSPCreate(double sampleRate) {
     }
 
     dsp->sampleRate = sampleRate;
-    atomic_init(&dsp->place, OverhearPlaceAfterClosing);
+    atomic_init(&dsp->place, OverhearPlaceEmptyMall);
     atomic_init(&dsp->targetBlend, 1.0f);
-    dsp->cachedPlace = OverhearPlaceAfterClosing;
+    dsp->cachedPlace = OverhearPlaceEmptyMall;
     dsp->targetParameters = parametersForPlace(dsp->cachedPlace);
 
     static const double reflectionSeconds[REFLECTION_TAP_COUNT] = {
@@ -235,15 +235,15 @@ OverhearDSP *OverhearDSPCreate(double sampleRate) {
     for (int tap = 0; tap < LATE_TAP_COUNT; tap++) {
         dsp->lateTapFrames[tap] = framesForSeconds(sampleRate, lateSeconds[tap]);
     }
-    static const double afterClosingRoomLineSeconds[AFTER_CLOSING_ROOM_LINE_COUNT] = {
+    static const double emptyMallRoomLineSeconds[EMPTY_MALL_ROOM_LINE_COUNT] = {
         0.073, 0.089, 0.113, 0.131
     };
-    for (int line = 0; line < AFTER_CLOSING_ROOM_LINE_COUNT; line++) {
-        dsp->afterClosingRoomLineLength[line] =
-            framesForSeconds(sampleRate, afterClosingRoomLineSeconds[line]);
-        dsp->afterClosingRoomLine[line] =
-            calloc(dsp->afterClosingRoomLineLength[line], sizeof(float));
-        if (dsp->afterClosingRoomLine[line] == NULL) {
+    for (int line = 0; line < EMPTY_MALL_ROOM_LINE_COUNT; line++) {
+        dsp->emptyMallRoomLineLength[line] =
+            framesForSeconds(sampleRate, emptyMallRoomLineSeconds[line]);
+        dsp->emptyMallRoomLine[line] =
+            calloc(dsp->emptyMallRoomLineLength[line], sizeof(float));
+        if (dsp->emptyMallRoomLine[line] == NULL) {
             OverhearDSPDestroy(dsp);
             return NULL;
         }
@@ -272,8 +272,8 @@ void OverhearDSPDestroy(OverhearDSP *dsp) {
     }
     free(dsp->reflectionLeft);
     free(dsp->reflectionRight);
-    for (int line = 0; line < AFTER_CLOSING_ROOM_LINE_COUNT; line++) {
-        free(dsp->afterClosingRoomLine[line]);
+    for (int line = 0; line < EMPTY_MALL_ROOM_LINE_COUNT; line++) {
+        free(dsp->emptyMallRoomLine[line]);
     }
     free(dsp);
 }
@@ -319,38 +319,7 @@ static float softLimit(float input) {
     return copysignf(limited, input);
 }
 
-static void processFrame(OverhearDSP *dsp, float left, float right, float *outLeft, float *outRight) {
-    float targetBlend = atomic_load_explicit(&dsp->targetBlend, memory_order_relaxed);
-    if (targetBlend <= 0.0001f) {
-        // Presence at zero is a bit-transparent diagnostic path through the
-        // same capture and clock-synchronous speaker callback.
-        dsp->blend = 0.0f;
-        *outLeft = left;
-        *outRight = right;
-        return;
-    }
-
-    int activePlace = atomic_load_explicit(&dsp->place, memory_order_relaxed);
-    if (activePlace != dsp->cachedPlace) {
-        dsp->cachedPlace = activePlace;
-        dsp->targetParameters = parametersForPlace(activePlace);
-    }
-    PlaceParameters target = dsp->targetParameters;
-    const float smoothing = 0.00085f;
-    dsp->blend += (targetBlend - dsp->blend) * 0.0015f;
-    dsp->lowpassHz += (target.lowpassHz - dsp->lowpassHz) * smoothing;
-    dsp->highpassHz += (target.highpassHz - dsp->highpassHz) * smoothing;
-    dsp->width += (target.width - dsp->width) * smoothing;
-    dsp->pan += (target.pan - dsp->pan) * smoothing;
-    dsp->drive += (target.drive - dsp->drive) * smoothing;
-    dsp->flutterDepth += (target.flutterDepth - dsp->flutterDepth) * smoothing;
-    dsp->sourceMix += (target.sourceMix - dsp->sourceMix) * smoothing;
-    dsp->directMix += (target.directMix - dsp->directMix) * smoothing;
-    dsp->earlyMix += (target.earlyMix - dsp->earlyMix) * smoothing;
-    dsp->windowMix += (target.windowMix - dsp->windowMix) * smoothing;
-    dsp->lateMix += (target.lateMix - dsp->lateMix) * smoothing;
-    dsp->outputGain += (target.outputGain - dsp->outputGain) * smoothing;
-
+static void filterSource(OverhearDSP *dsp, float left, float right, float filtered[2]) {
     const float mid = (left + right) * 0.5f;
     float source[2] = {
         mid + (left - mid) * dsp->width,
@@ -363,8 +332,6 @@ static void processFrame(OverhearDSP *dsp, float left, float right, float *outLe
             source[1] *= 1.0f + dsp->pan * 0.72f;
         }
     }
-    float dry[2] = { left, right };
-    float filtered[2];
     // Recalculate only while cutoff smoothing changes the actual float value.
     // This preserves the exact filter math without steady-state expf/divisions.
     if (dsp->coefficientLowpassHz != dsp->lowpassHz) {
@@ -411,117 +378,50 @@ static void processFrame(OverhearDSP *dsp, float left, float right, float *outLe
         filtered[1] *= flutter;
     }
     dsp->processedFrameCount++;
+}
 
-    uint32_t reflectionWriteIndex = dsp->reflectionIndex;
-    dsp->reflectionLeft[reflectionWriteIndex] = filtered[0];
-    dsp->reflectionRight[reflectionWriteIndex] = filtered[1];
-
-    static const float reflectionGain[REFLECTION_TAP_COUNT] = {
-        0.27f, 0.22f, 0.18f, 0.145f, 0.115f, 0.09f, 0.07f, 0.05f
-    };
-    float reflected[2] = { 0.0f, 0.0f };
-    for (int tap = 0; tap < REFLECTION_TAP_COUNT; tap++) {
-        uint32_t index = delayedIndex(
-            reflectionWriteIndex,
-            dsp->reflectionCapacity,
-            dsp->reflectionTapFrames[tap]
-        );
-        // Alternate walls between the same and opposite stereo channels.
-        if ((tap & 1) == 0) {
-            reflected[0] += dsp->reflectionLeft[index] * reflectionGain[tap];
-            reflected[1] += dsp->reflectionRight[index] * reflectionGain[tap];
-        } else {
-            reflected[0] += dsp->reflectionRight[index] * reflectionGain[tap];
-            reflected[1] += dsp->reflectionLeft[index] * reflectionGain[tap];
-        }
-    }
-
-    static const float windowGain[WINDOW_TAP_COUNT] = {
-        0.24f, 0.20f, 0.13f
-    };
-    float windowReturn[2] = { 0.0f, 0.0f };
-    for (int tap = 0; tap < WINDOW_TAP_COUNT; tap++) {
-        uint32_t index = delayedIndex(
-            reflectionWriteIndex,
-            dsp->reflectionCapacity,
-            dsp->windowTapFrames[tap]
-        );
-        // The nearby window reveal is centered; the later returns spread
-        // asymmetrically from opposing stone façades.
-        float delayedMid = (dsp->reflectionLeft[index] + dsp->reflectionRight[index]) * 0.5f;
-        float pan = tap == 1 ? 0.72f : (tap == 2 ? 0.28f : 0.5f);
-        windowReturn[0] += delayedMid * windowGain[tap] * (1.0f - pan) * 2.0f;
-        windowReturn[1] += delayedMid * windowGain[tap] * pan * 2.0f;
-    }
-
-    static const float lateGain[LATE_TAP_COUNT] = {
-        0.15f, 0.13f, 0.11f, 0.095f, 0.08f, 0.067f, 0.055f, 0.045f
-    };
-    float late[2] = { 0.0f, 0.0f };
-    for (int tap = 0; tap < LATE_TAP_COUNT; tap++) {
-        uint32_t index = delayedIndex(
-            reflectionWriteIndex,
-            dsp->reflectionCapacity,
-            dsp->lateTapFrames[tap]
-        );
-        if ((tap & 1) == 0) {
-            late[0] += dsp->reflectionLeft[index] * lateGain[tap];
-            late[1] += dsp->reflectionRight[index] * lateGain[tap];
-        } else {
-            late[0] += dsp->reflectionRight[index] * lateGain[tap];
-            late[1] += dsp->reflectionLeft[index] * lateGain[tap];
-        }
-    }
-    dsp->reflectionIndex++;
-    if (dsp->reflectionIndex == dsp->reflectionCapacity) {
-        dsp->reflectionIndex = 0;
-    }
-
-    float roomOutput[AFTER_CLOSING_ROOM_LINE_COUNT];
-    for (int line = 0; line < AFTER_CLOSING_ROOM_LINE_COUNT; line++) {
+static void processRoomReverb(OverhearDSP *dsp, const float filtered[2], float emptyMallLate[2]) {
+    float roomOutput[EMPTY_MALL_ROOM_LINE_COUNT];
+    for (int line = 0; line < EMPTY_MALL_ROOM_LINE_COUNT; line++) {
         roomOutput[line] =
-            dsp->afterClosingRoomLine[line][dsp->afterClosingRoomLineIndex[line]];
+            dsp->emptyMallRoomLine[line][dsp->emptyMallRoomLineIndex[line]];
     }
-    const float afterClosingDamping = 0.68f;
-    float roomDamped[AFTER_CLOSING_ROOM_LINE_COUNT];
-    for (int line = 0; line < AFTER_CLOSING_ROOM_LINE_COUNT; line++) {
+    const float emptyMallDamping = 0.68f;
+    float roomDamped[EMPTY_MALL_ROOM_LINE_COUNT];
+    for (int line = 0; line < EMPTY_MALL_ROOM_LINE_COUNT; line++) {
         roomDamped[line] =
-            roomOutput[line] * (1.0f - afterClosingDamping)
-            + dsp->afterClosingRoomDampingState[line] * afterClosingDamping;
-        dsp->afterClosingRoomDampingState[line] = roomDamped[line];
+            roomOutput[line] * (1.0f - emptyMallDamping)
+            + dsp->emptyMallRoomDampingState[line] * emptyMallDamping;
+        dsp->emptyMallRoomDampingState[line] = roomDamped[line];
     }
-    float roomMixed[AFTER_CLOSING_ROOM_LINE_COUNT] = {
+    float roomMixed[EMPTY_MALL_ROOM_LINE_COUNT] = {
         (roomDamped[0] + roomDamped[1] + roomDamped[2] + roomDamped[3]) * 0.5f,
         (roomDamped[0] - roomDamped[1] + roomDamped[2] - roomDamped[3]) * 0.5f,
         (roomDamped[0] + roomDamped[1] - roomDamped[2] - roomDamped[3]) * 0.5f,
         (roomDamped[0] - roomDamped[1] - roomDamped[2] + roomDamped[3]) * 0.5f
     };
-    float roomInput[AFTER_CLOSING_ROOM_LINE_COUNT] = {
+    float roomInput[EMPTY_MALL_ROOM_LINE_COUNT] = {
         filtered[0], filtered[1], filtered[0], -filtered[1]
     };
-    const float afterClosingFeedback = 0.82f;
-    for (int line = 0; line < AFTER_CLOSING_ROOM_LINE_COUNT; line++) {
-        dsp->afterClosingRoomLine[line][dsp->afterClosingRoomLineIndex[line]] =
-            roomInput[line] * 0.32f + roomMixed[line] * afterClosingFeedback;
-        dsp->afterClosingRoomLineIndex[line]++;
+    const float emptyMallFeedback = 0.82f;
+    for (int line = 0; line < EMPTY_MALL_ROOM_LINE_COUNT; line++) {
+        dsp->emptyMallRoomLine[line][dsp->emptyMallRoomLineIndex[line]] =
+            roomInput[line] * 0.32f + roomMixed[line] * emptyMallFeedback;
+        dsp->emptyMallRoomLineIndex[line]++;
         if (
-            dsp->afterClosingRoomLineIndex[line]
-                == dsp->afterClosingRoomLineLength[line]
+            dsp->emptyMallRoomLineIndex[line]
+                == dsp->emptyMallRoomLineLength[line]
         ) {
-            dsp->afterClosingRoomLineIndex[line] = 0;
+            dsp->emptyMallRoomLineIndex[line] = 0;
         }
     }
-    float afterClosingLate[2] = {
-        (roomOutput[0] + roomOutput[2]) * 0.5f,
-        (roomOutput[1] + roomOutput[3]) * 0.5f
-    };
-    float *selectedLate = (
-        activePlace == OverhearPlaceAfterClosing
-        || activePlace == OverhearPlaceCinemaAfterCredits
-    )
-        ? afterClosingLate
-        : late;
+    emptyMallLate[0] = (roomOutput[0] + roomOutput[2]) * 0.5f;
+    emptyMallLate[1] = (roomOutput[1] + roomOutput[3]) * 0.5f;
+}
 
+static void mixOutput(OverhearDSP *dsp, const float dry[2], const float filtered[2],
+                      const float reflected[2], const float windowReturn[2],
+                      const float selectedLate[2], float *outLeft, float *outRight) {
     // Preserve a quiet, unfiltered stereo core while the environmental bus
     // carries all distance filtering, saturation, reflections, and reverb.
     // sourceMix replaces part of the former filtered direct component, so the
@@ -547,6 +447,112 @@ static void processFrame(OverhearDSP *dsp, float left, float right, float *outLe
     float wetGain = sinf(blendAngle) * dsp->outputGain;
     *outLeft = softLimit(dry[0] * dryGain + wet[0] * wetGain);
     *outRight = softLimit(dry[1] * dryGain + wet[1] * wetGain);
+}
+
+static void accumulateReflections(const OverhearDSP *dsp, const uint32_t *tapFrames,
+                                  const float *gains, int tapCount, float result[2]) {
+    for (int tap = 0; tap < tapCount; tap++) {
+        uint32_t index = delayedIndex(
+            dsp->reflectionIndex,
+            dsp->reflectionCapacity,
+            tapFrames[tap]
+        );
+        // Alternate walls between the same and opposite stereo channels.
+        if ((tap & 1) == 0) {
+            result[0] += dsp->reflectionLeft[index] * gains[tap];
+            result[1] += dsp->reflectionRight[index] * gains[tap];
+        } else {
+            result[0] += dsp->reflectionRight[index] * gains[tap];
+            result[1] += dsp->reflectionLeft[index] * gains[tap];
+        }
+    }
+}
+
+static void processFrame(OverhearDSP *dsp, float left, float right, float *outLeft, float *outRight) {
+    float targetBlend = atomic_load_explicit(&dsp->targetBlend, memory_order_relaxed);
+    if (targetBlend <= 0.0001f) {
+        // Presence at zero is a bit-transparent diagnostic path through the
+        // same capture and clock-synchronous speaker callback.
+        dsp->blend = 0.0f;
+        *outLeft = left;
+        *outRight = right;
+        return;
+    }
+
+    int activePlace = atomic_load_explicit(&dsp->place, memory_order_relaxed);
+    if (activePlace != dsp->cachedPlace) {
+        dsp->cachedPlace = activePlace;
+        dsp->targetParameters = parametersForPlace(activePlace);
+    }
+    PlaceParameters target = dsp->targetParameters;
+    const float smoothing = 0.00085f;
+    dsp->blend += (targetBlend - dsp->blend) * 0.0015f;
+    dsp->lowpassHz += (target.lowpassHz - dsp->lowpassHz) * smoothing;
+    dsp->highpassHz += (target.highpassHz - dsp->highpassHz) * smoothing;
+    dsp->width += (target.width - dsp->width) * smoothing;
+    dsp->pan += (target.pan - dsp->pan) * smoothing;
+    dsp->drive += (target.drive - dsp->drive) * smoothing;
+    dsp->flutterDepth += (target.flutterDepth - dsp->flutterDepth) * smoothing;
+    dsp->sourceMix += (target.sourceMix - dsp->sourceMix) * smoothing;
+    dsp->directMix += (target.directMix - dsp->directMix) * smoothing;
+    dsp->earlyMix += (target.earlyMix - dsp->earlyMix) * smoothing;
+    dsp->windowMix += (target.windowMix - dsp->windowMix) * smoothing;
+    dsp->lateMix += (target.lateMix - dsp->lateMix) * smoothing;
+    dsp->outputGain += (target.outputGain - dsp->outputGain) * smoothing;
+
+    float dry[2] = { left, right };
+    float filtered[2];
+    filterSource(dsp, left, right, filtered);
+
+    uint32_t reflectionWriteIndex = dsp->reflectionIndex;
+    dsp->reflectionLeft[reflectionWriteIndex] = filtered[0];
+    dsp->reflectionRight[reflectionWriteIndex] = filtered[1];
+
+    static const float reflectionGain[REFLECTION_TAP_COUNT] = {
+        0.27f, 0.22f, 0.18f, 0.145f, 0.115f, 0.09f, 0.07f, 0.05f
+    };
+    float reflected[2] = { 0.0f, 0.0f };
+    accumulateReflections(dsp, dsp->reflectionTapFrames, reflectionGain, REFLECTION_TAP_COUNT, reflected);
+
+    static const float windowGain[WINDOW_TAP_COUNT] = {
+        0.24f, 0.20f, 0.13f
+    };
+    float windowReturn[2] = { 0.0f, 0.0f };
+    for (int tap = 0; tap < WINDOW_TAP_COUNT; tap++) {
+        uint32_t index = delayedIndex(
+            reflectionWriteIndex,
+            dsp->reflectionCapacity,
+            dsp->windowTapFrames[tap]
+        );
+        // The nearby window reveal is centered; the later returns spread
+        // asymmetrically from opposing stone façades.
+        float delayedMid = (dsp->reflectionLeft[index] + dsp->reflectionRight[index]) * 0.5f;
+        float pan = tap == 1 ? 0.72f : (tap == 2 ? 0.28f : 0.5f);
+        windowReturn[0] += delayedMid * windowGain[tap] * (1.0f - pan) * 2.0f;
+        windowReturn[1] += delayedMid * windowGain[tap] * pan * 2.0f;
+    }
+
+    static const float lateGain[LATE_TAP_COUNT] = {
+        0.15f, 0.13f, 0.11f, 0.095f, 0.08f, 0.067f, 0.055f, 0.045f
+    };
+    float late[2] = { 0.0f, 0.0f };
+    accumulateReflections(dsp, dsp->lateTapFrames, lateGain, LATE_TAP_COUNT, late);
+    dsp->reflectionIndex++;
+    if (dsp->reflectionIndex == dsp->reflectionCapacity) {
+        dsp->reflectionIndex = 0;
+    }
+
+    float emptyMallLate[2];
+    processRoomReverb(dsp, filtered, emptyMallLate);
+
+    float *selectedLate = (
+        activePlace == OverhearPlaceEmptyMall
+        || activePlace == OverhearPlaceMovieTheater
+    )
+        ? emptyMallLate
+        : late;
+
+    mixOutput(dsp, dry, filtered, reflected, windowReturn, selectedLate, outLeft, outRight);
 }
 
 void OverhearDSPProcessInterleavedStereo(

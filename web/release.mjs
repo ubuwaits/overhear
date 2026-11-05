@@ -1,9 +1,11 @@
-import { mkdir, cp } from 'node:fs/promises';
+import { mkdir, cp, rm } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 const root = new URL('./', import.meta.url);
 // Only runtime files are shipped. Tests, compiler scripts and the local server
 // remain development tools. The library also works without the demo directory.
-await mkdir(new URL('dist/', root), { recursive: true });
+const output = new URL('dist/', root);
+await rm(output, { recursive: true, force: true });
+await mkdir(output, { recursive: true });
 for (const directory of ['lib', 'demo']) {
   await cp(new URL(directory, root), new URL(`dist/${directory}`, root), { recursive: true });
 }

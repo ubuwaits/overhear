@@ -2,13 +2,13 @@ import OverhearDSP
 import Testing
 
 private let allPlaces: [OverhearPlace] = [
-    OverhearPlaceAfterClosing,
-    OverhearPlaceCinemaAfterCredits,
-    OverhearPlaceOpenShutters,
+    OverhearPlaceEmptyMall,
+    OverhearPlaceMovieTheater,
+    OverhearPlaceOpenWindow,
     OverhearPlaceThinWall,
     OverhearPlaceHotelCorridor,
-    OverhearPlaceCarParkAtDawn,
-    OverhearPlaceKitchenRadio1979
+    OverhearPlaceParkingGarage,
+    OverhearPlaceKitchenRadio
 ]
 
 private func representativeMusic(frameCount: Int, sampleRate: Float) -> [Float] {
@@ -187,7 +187,7 @@ func kitchenRadioAvoidsSampleHoldArtifacts() {
     #expect(processor != nil)
     guard let processor else { return }
     defer { OverhearDSPDestroy(processor) }
-    OverhearDSPSetPlace(processor, OverhearPlaceKitchenRadio1979)
+    OverhearDSPSetPlace(processor, OverhearPlaceKitchenRadio)
     OverhearDSPSetBlend(processor, 1)
 
     var output = Array(repeating: Float.zero, count: input.count)
@@ -281,10 +281,10 @@ func loudMaterialDoesNotHardClip() {
 @Test("Reflections remain quieter than the source transient")
 func reflectionsDoNotBecomeDiscreteEchoes() {
     for place in [
-        OverhearPlaceOpenShutters,
+        OverhearPlaceOpenWindow,
         OverhearPlaceHotelCorridor,
-        OverhearPlaceCinemaAfterCredits,
-        OverhearPlaceCarParkAtDawn
+        OverhearPlaceMovieTheater,
+        OverhearPlaceParkingGarage
     ] {
         let processor = OverhearDSPCreate(48_000)
         #expect(processor != nil)

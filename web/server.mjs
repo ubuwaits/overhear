@@ -2,6 +2,7 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { resolve, extname, sep } from 'node:path';
+import { parseByteRange } from './byte-range.mjs';
 const root = fileURLToPath(new URL('.', import.meta.url));
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.wasm': 'application/wasm', '.css': 'text/css', '.mp3': 'audio/mpeg', '.md': 'text/plain' };
 createServer(async (req, res) => {
@@ -15,20 +16,15 @@ createServer(async (req, res) => {
     }
     const path = resolve(root, '.' + (pathname === '/demo/' ? '/demo/index.html' : pathname));
     if (!path.startsWith(root) || path.includes(`${sep}.`)) throw new Error('Invalid path');
-    const file = path === root.slice(0, -1) || path === root ? resolve(root, 'index.html') : path;
+    const file = path;
     const body = await readFile(file);
     const headers = { 'Content-Type': types[extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-store', 'Accept-Ranges': 'bytes' };
-    let start = 0, end = body.length - 1;
+    const range = parseByteRange(req.headers.range, body.length);
+    if (!range) {
+      res.writeHead(416, { 'Content-Range': `bytes */${body.length}` }); res.end(); return;
+    }
+    const { start, end } = range;
     if (req.headers.range) {
-      const match = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range);
-      if (!match || (!match[1] && !match[2])) {
-        res.writeHead(416, { 'Content-Range': `bytes */${body.length}` }); res.end(); return;
-      }
-      if (!match[1]) start = Math.max(0, body.length - Number(match[2]));
-      else { start = Number(match[1]); if (match[2]) end = Math.min(end, Number(match[2])); }
-      if (start > end || start >= body.length) {
-        res.writeHead(416, { 'Content-Range': `bytes */${body.length}` }); res.end(); return;
-      }
       headers['Content-Range'] = `bytes ${start}-${end}/${body.length}`;
     }
     headers['Content-Length'] = end - start + 1;

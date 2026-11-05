@@ -12,7 +12,7 @@ final class AppModel {
         case error(String)
     }
 
-    private(set) var selectedPlace: Place = .afterClosing
+    private(set) var selectedPlace: Place = .emptyMall
 
     var blend: Double = 1.0 {
         didSet {

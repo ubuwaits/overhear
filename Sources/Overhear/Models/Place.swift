@@ -1,49 +1,49 @@
 import OverhearDSP
 
 enum Place: CaseIterable, Identifiable, Sendable {
-    case afterClosing
-    case cinemaAfterCredits
-    case openShutters
+    case emptyMall
+    case movieTheater
+    case openWindow
     case thinWall
     case hotelCorridor
-    case carParkAtDawn
-    case kitchenRadio1979
+    case parkingGarage
+    case kitchenRadio
 
     var id: Self { self }
 
     var title: String {
         switch self {
-        case .afterClosing: "Empty mall"
-        case .cinemaAfterCredits: "Movie theater"
-        case .openShutters: "Open window"
+        case .emptyMall: "Empty mall"
+        case .movieTheater: "Movie theater"
+        case .openWindow: "Open window"
         case .thinWall: "Thin wall"
         case .hotelCorridor: "Hotel corridor"
-        case .carParkAtDawn: "Parking garage"
-        case .kitchenRadio1979: "Kitchen radio"
+        case .parkingGarage: "Parking garage"
+        case .kitchenRadio: "Kitchen radio"
         }
     }
 
     var symbol: String {
         switch self {
-        case .afterClosing: "building.2"
-        case .openShutters: "window.vertical.open"
+        case .emptyMall: "building.2"
+        case .openWindow: "window.vertical.open"
         case .thinWall: "rectangle.split.3x1"
         case .hotelCorridor: "door.left.hand.closed"
-        case .cinemaAfterCredits: "film"
-        case .carParkAtDawn: "parkingsign"
-        case .kitchenRadio1979: "radio"
+        case .movieTheater: "film"
+        case .parkingGarage: "parkingsign"
+        case .kitchenRadio: "radio"
         }
     }
 
     var dspValue: OverhearPlace {
         switch self {
-        case .afterClosing: OverhearPlaceAfterClosing
-        case .openShutters: OverhearPlaceOpenShutters
+        case .emptyMall: OverhearPlaceEmptyMall
+        case .openWindow: OverhearPlaceOpenWindow
         case .thinWall: OverhearPlaceThinWall
         case .hotelCorridor: OverhearPlaceHotelCorridor
-        case .cinemaAfterCredits: OverhearPlaceCinemaAfterCredits
-        case .carParkAtDawn: OverhearPlaceCarParkAtDawn
-        case .kitchenRadio1979: OverhearPlaceKitchenRadio1979
+        case .movieTheater: OverhearPlaceMovieTheater
+        case .parkingGarage: OverhearPlaceParkingGarage
+        case .kitchenRadio: OverhearPlaceKitchenRadio
         }
     }
 }
