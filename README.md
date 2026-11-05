@@ -2,6 +2,8 @@
 
 Overhear is a small macOS menu-bar app that places whatever is playing on the Mac inside an imagined acoustic space.
 
+<img src="screenshots/overhear-macos.png" alt="Overhear’s macOS menu showing seven environmental filters and the Presence control" width="300">
+
 The app includes:
 
 - **Empty mall** — an empty shopping arcade at night
