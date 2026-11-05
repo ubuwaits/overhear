@@ -51,6 +51,10 @@ struct FragmentaryDSP {
     float lowStateSecond[2];
     float highState[2];
     float highInput[2];
+    float coefficientLowpassHz;
+    float coefficientHighpassHz;
+    float lowpassCoefficient;
+    float highpassCoefficient;
     uint64_t processedFrameCount;
 
     float *reflectionLeft;
@@ -361,13 +365,22 @@ static void processFrame(FragmentaryDSP *dsp, float left, float right, float *ou
     }
     float dry[2] = { left, right };
     float filtered[2];
-    float lowpassCoefficient = expf(
-        -2.0f * (float)M_PI * dsp->lowpassHz / (float)dsp->sampleRate
-    );
-    float highpassRC =
-        1.0f / (2.0f * (float)M_PI * dsp->highpassHz);
-    float highpassDT = 1.0f / (float)dsp->sampleRate;
-    float highpassCoefficient = highpassRC / (highpassRC + highpassDT);
+    // Recalculate only while cutoff smoothing changes the actual float value.
+    // This preserves the exact filter math without steady-state expf/divisions.
+    if (dsp->coefficientLowpassHz != dsp->lowpassHz) {
+        dsp->coefficientLowpassHz = dsp->lowpassHz;
+        dsp->lowpassCoefficient = expf(
+            -2.0f * (float)M_PI * dsp->lowpassHz / (float)dsp->sampleRate
+        );
+    }
+    if (dsp->coefficientHighpassHz != dsp->highpassHz) {
+        dsp->coefficientHighpassHz = dsp->highpassHz;
+        float rc = 1.0f / (2.0f * (float)M_PI * dsp->highpassHz);
+        float dt = 1.0f / (float)dsp->sampleRate;
+        dsp->highpassCoefficient = rc / (rc + dt);
+    }
+    float lowpassCoefficient = dsp->lowpassCoefficient;
+    float highpassCoefficient = dsp->highpassCoefficient;
 
     for (int channel = 0; channel < 2; channel++) {
         float shaped = onePoleLowpass(

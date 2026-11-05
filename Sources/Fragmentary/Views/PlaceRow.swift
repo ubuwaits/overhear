@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 
 struct PlaceRow: View {

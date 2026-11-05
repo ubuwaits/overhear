@@ -12,19 +12,13 @@ final class AppModel {
         case error(String)
     }
 
-    var selectedPlace: Place = .afterClosing {
-        didSet {
-            guard selectedPlace != oldValue else { return }
-            engine.setPlace(selectedPlace)
-            if state == .off || isError {
-                turnOn()
-            }
-        }
-    }
+    private(set) var selectedPlace: Place = .afterClosing
 
     var blend: Double = 1.0 {
         didSet {
-            engine.setBlend(blend)
+            if blend != oldValue, state == .active {
+                engine.setBlend(blend)
+            }
         }
     }
 
@@ -35,10 +29,6 @@ final class AppModel {
 
     var isOn: Bool {
         state == .starting || state == .active
-    }
-
-    var isError: Bool {
-        if case .error = state { true } else { false }
     }
 
     var statusText: String {
@@ -54,11 +44,17 @@ final class AppModel {
         if case let .error(message) = state { message } else { nil }
     }
 
-    func toggle() {
-        isOn ? turnOff() : turnOn()
+    func select(_ place: Place) {
+        let changed = selectedPlace != place
+        selectedPlace = place
+        if state == .active {
+            if changed { engine.setPlace(place) }
+        } else {
+            turnOn()
+        }
     }
 
-    func turnOn() {
+    private func turnOn() {
         guard state != .starting && state != .active else { return }
         // Bring privacy prompts forward for this otherwise accessory-only app.
         NSApplication.shared.activate(ignoringOtherApps: true)
@@ -75,6 +71,10 @@ final class AppModel {
             do {
                 try await engine.start(place: place, blend: presence)
                 guard revision == transitionRevision else { return }
+                // Selection and Presence may have changed while start awaited
+                // the hardware. Apply the latest values before reporting active.
+                if selectedPlace != place { engine.setPlace(selectedPlace) }
+                if blend != presence { engine.setBlend(blend) }
                 state = .active
             } catch {
                 guard revision == transitionRevision else { return }
@@ -84,6 +84,7 @@ final class AppModel {
     }
 
     func turnOff() {
+        guard state != .off else { return }
         state = .off
         transitionRevision += 1
         let previousTransition = transitionTask
@@ -96,7 +97,6 @@ final class AppModel {
     }
 
     func retry() {
-        state = .off
         turnOn()
     }
 }
