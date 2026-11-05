@@ -33,9 +33,6 @@ struct PlacePopoverView: View {
                     model.select(place)
                 }
             }
-            PlaceRow(title: "No filter", symbol: "speaker.wave.2", isSelected: model.state == .off, selectionColor: .gray) {
-                model.turnOff()
-            }
         }
         .padding(10)
     }

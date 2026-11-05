@@ -45,10 +45,13 @@ final class AppModel {
     }
 
     func select(_ place: Place) {
-        let changed = selectedPlace != place
+        if isOn && selectedPlace == place {
+            turnOff()
+            return
+        }
         selectedPlace = place
         if state == .active {
-            if changed { engine.setPlace(place) }
+            engine.setPlace(place)
         } else {
             turnOn()
         }

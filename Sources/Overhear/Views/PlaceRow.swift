@@ -4,7 +4,6 @@ struct PlaceRow: View {
     let title: String
     let symbol: String
     let isSelected: Bool
-    var selectionColor: Color = .accentColor
     let select: () -> Void
 
     @State private var isHovered = false
@@ -20,7 +19,7 @@ struct PlaceRow: View {
                     )
                     .background {
                         Circle().fill(
-                            isSelected ? selectionColor : Color.secondary.opacity(0.12)
+                            isSelected ? Color.accentColor : Color.secondary.opacity(0.12)
                         )
                     }
 
@@ -40,6 +39,8 @@ struct PlaceRow: View {
             )
         }
         .buttonStyle(.plain)
+        .accessibilityValue(isSelected ? "On" : "Off")
+        .help(isSelected ? "Turn off this filter" : "Turn on this filter")
         .onHover { isHovered = $0 }
         .animation(.easeOut(duration: 0.12), value: isHovered)
     }
