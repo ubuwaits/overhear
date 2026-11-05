@@ -10,8 +10,8 @@ try {
   page.on('pageerror', error => errors.push(error.message));
   await page.goto('http://127.0.0.1:4173/');
   await page.waitForFunction(() => window.fragmentary);
-  assert.equal(await page.evaluate(() => window.fragmentary.filter), 'empty-mall');
-  assert.equal(await page.getByRole('button', { name: 'Empty mall', exact: true }).getAttribute('aria-pressed'), 'true');
+  assert.equal(await page.evaluate(() => window.fragmentary.filter), 'open-window');
+  assert.equal(await page.getByRole('button', { name: 'Open window', exact: true }).getAttribute('aria-pressed'), 'true');
   assert.ok(await page.locator('#presence').isEnabled());
   assert.equal(await page.locator('input[type=file]').count(), 0);
   await page.waitForFunction(() => document.querySelector('audio').readyState >= 2);

@@ -4,9 +4,9 @@ A demonstration using the **same C DSP** as the Mac app, compiled to WebAssembly
 
 ## Demo audio credit
 
-J. S. Bach — Cello Suite No. 1 in G major, BWV 1007: Prelude. Recording credited to Philip Milman, funded by Ludwig and Schlatt (Lud and Schlatt’s Musical Emporium), 2022. Licensed under [Creative Commons Attribution 3.0](https://creativecommons.org/licenses/by/3.0/).
-[Recording source and license](https://commons.wikimedia.org/wiki/File:Bach_-_Cello_Suite_no._1_in_G_major,_BWV_1007_-_I._Pr%C3%A9lude,_Lud_and_Schlatts_Musical_Emporium.ogg).
-The bundled file is Wikimedia’s MP3 transcode of the Ogg recording. No excerpting or other file edits; selected effects modify playback.
+Frédéric Chopin — Nocturne in E-flat major, Op. 9 No. 2, performed by Peter Johnston, via Musopen. The recording is listed under [CC0](https://creativecommons.org/publicdomain/zero/1.0/).
+[Recording source and license](https://commons.wikimedia.org/wiki/File:Chopin_Nocturne_No._2_in_E_Flat_Major,_Op._9.ogg).
+The first 1.75 seconds were removed, cutting inside the quiet gap at approximately 1.62–1.88 seconds. A 10 ms fade-in avoids an edit click. The original Ogg was encoded to MP3 with libmp3lame quality 2. Selected effects modify playback; the demo defaults to Open window at 100% Presence.
 
 ## Run
 

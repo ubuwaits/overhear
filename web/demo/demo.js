@@ -5,7 +5,7 @@ const presence = document.querySelector('#presence');
 try {
   const player = await FragmentaryPlayer.create(audio);
   window.fragmentary = player;
-  player.setFilter('empty-mall');
+  player.setFilter('open-window');
   presence.disabled = false;
   const play = document.querySelector('#play');
   const seek = document.querySelector('#seek');
@@ -67,7 +67,7 @@ try {
     return button;
   });
   document.querySelector('#places').disabled = false;
-  player.load(new URL('./audio/bach-cello-prelude.mp3', import.meta.url));
+  player.load(new URL('./audio/chopin-nocturne-op9-no2.mp3', import.meta.url));
   status.textContent = '';
   presence.oninput = () => {
     player.setPresence(Number(presence.value));
