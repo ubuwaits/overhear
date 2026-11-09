@@ -366,3 +366,46 @@ func audioBufferListProcessingClearsOutputTail() {
     #expect(output[..<4].elementsEqual(input))
     #expect(output[4...].allSatisfy { $0 == 0 })
 }
+
+@Test("Editable factory parameters reproduce factory presets")
+func editablePresetParity() {
+    for place in allPlaces {
+        let a = OverhearDSPCreate(48_000)!
+        let b = OverhearDSPCreate(48_000)!
+        defer { OverhearDSPDestroy(a); OverhearDSPDestroy(b) }
+        OverhearDSPSetPlace(a, place)
+        for index in 0..<UInt32(OVERHEAR_PARAMETER_COUNT) {
+            OverhearDSPSetParameter(b, index, OverhearDSPPresetParameter(place, index))
+        }
+        let input = representativeMusic(frameCount: 96_000, sampleRate: 48_000)
+        var outputA = [Float](repeating: 0, count: input.count)
+        var outputB = outputA
+        OverhearDSPProcessInterleavedStereo(a, input, &outputA, 96_000)
+        OverhearDSPProcessInterleavedStereo(b, input, &outputB, 96_000)
+        #expect(outputA == outputB)
+    }
+}
+
+@Test("All editable parameters remain finite at their boundaries")
+func editableBoundaries() {
+    let dsp = OverhearDSPCreate(8_000)!
+    defer { OverhearDSPDestroy(dsp) }
+    let input = representativeMusic(frameCount: 20_000, sampleRate: 8_000)
+    var output = [Float](repeating: 0, count: input.count)
+    for value: Float in [-100_000, 100_000, .nan, .infinity] {
+        for index in 0..<UInt32(OVERHEAR_PARAMETER_COUNT) { OverhearDSPSetParameter(dsp, index, value) }
+        OverhearDSPProcessInterleavedStereo(dsp, input, &output, 20_000)
+        #expect(output.allSatisfy { $0.isFinite && abs($0) <= 1 })
+    }
+}
+
+@Test("Custom output gain changes the rendered sound")
+func customControlsAffectAudio() {
+    let dsp = OverhearDSPCreate(48_000)!
+    defer { OverhearDSPDestroy(dsp) }
+    OverhearDSPSetParameter(dsp, 11, 0)
+    let input = [Float](repeating: 0.2, count: 96_000)
+    var output = [Float](repeating: 0, count: input.count)
+    OverhearDSPProcessInterleavedStereo(dsp, input, &output, 48_000)
+    #expect(output.suffix(200).allSatisfy { abs($0) < 0.00001 })
+}

@@ -17,7 +17,7 @@ final class SystemAudioEngine: @unchecked Sendable {
         stopSynchronously()
     }
 
-    func start(place: Place, blend: Double) async throws {
+    func start(effect: Effect) async throws {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             controlQueue.async { [weak self] in
                 guard let self else {
@@ -26,10 +26,9 @@ final class SystemAudioEngine: @unchecked Sendable {
                 }
                 do {
                     if self.running {
-                        self.setPlaceSynchronously(place)
-                        self.setBlendSynchronously(blend)
+                        self.setEffectSynchronously(effect)
                     } else {
-                        try self.startSynchronously(place: place, blend: blend)
+                        try self.startSynchronously(effect: effect)
                     }
                     continuation.resume()
                 } catch {
@@ -55,13 +54,26 @@ final class SystemAudioEngine: @unchecked Sendable {
         }
     }
 
+    func setEffect(_ effect: Effect) {
+        controlQueue.async { [weak self] in self?.setEffectSynchronously(effect) }
+    }
+
+    private func setEffectSynchronously(_ effect: Effect) {
+        guard let processor else { return }
+        let configuration = SceneAcoustics(scene: effect.room).configuration
+        configuration.withUnsafeBufferPointer {
+            OverhearDSPSetScene(processor, $0.baseAddress, UInt32($0.count))
+        }
+        OverhearDSPSetBlend(processor, Float(effect.presence))
+    }
+
     func setBlend(_ blend: Double) {
         controlQueue.async { [weak self] in
             self?.setBlendSynchronously(blend)
         }
     }
 
-    private func startSynchronously(place: Place, blend: Double) throws {
+    private func startSynchronously(effect: Effect) throws {
         guard #available(macOS 14.2, *) else {
             throw CoreAudioFailure.unavailable("Overhear requires macOS 14.2 or later.")
         }
@@ -143,8 +155,7 @@ final class SystemAudioEngine: @unchecked Sendable {
             throw CoreAudioFailure.unavailable("The environmental audio processor could not be created.")
         }
         processor = newProcessor
-        OverhearDSPSetPlace(newProcessor, place.dspValue)
-        OverhearDSPSetBlend(newProcessor, Float(blend))
+        setEffectSynchronously(effect)
 
         var newIOProcID: AudioDeviceIOProcID?
         let processorForCallback = newProcessor

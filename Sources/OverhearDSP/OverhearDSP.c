@@ -1,4 +1,5 @@
 #include "OverhearDSP.h"
+#include "SceneDSP.h"
 
 #include <math.h>
 #include <stdatomic.h>
@@ -27,7 +28,13 @@ typedef struct {
 #define EMPTY_MALL_ROOM_LINE_COUNT 4
 
 struct OverhearDSP {
+    SceneDSP *scene;
+    _Atomic bool sceneEnabled;
     double sampleRate;
+    _Atomic float controls[62];
+    _Atomic unsigned revision;
+    unsigned cachedRevision;
+    float settings[62];
     _Atomic int place;
     _Atomic float targetBlend;
     int cachedPlace;
@@ -204,8 +211,14 @@ OverhearDSP *OverhearDSPCreate(double sampleRate) {
         return NULL;
     }
 
+    dsp->scene = SceneDSPCreate(sampleRate);
+    if (!dsp->scene) { free(dsp); return NULL; }
+    atomic_init(&dsp->sceneEnabled, false);
     dsp->sampleRate = sampleRate;
     atomic_init(&dsp->place, OverhearPlaceEmptyMall);
+    atomic_init(&dsp->revision, 0);
+    for (int i = 0; i < 62; i++) atomic_init(&dsp->controls[i], OverhearDSPPresetParameter(OverhearPlaceEmptyMall, i));
+    for (int i = 0; i < 62; i++) dsp->settings[i] = atomic_load(&dsp->controls[i]);
     atomic_init(&dsp->targetBlend, 1.0f);
     dsp->cachedPlace = OverhearPlaceEmptyMall;
     dsp->targetParameters = parametersForPlace(dsp->cachedPlace);
@@ -242,7 +255,7 @@ OverhearDSP *OverhearDSPCreate(double sampleRate) {
         dsp->emptyMallRoomLineLength[line] =
             framesForSeconds(sampleRate, emptyMallRoomLineSeconds[line]);
         dsp->emptyMallRoomLine[line] =
-            calloc(dsp->emptyMallRoomLineLength[line], sizeof(float));
+            calloc(framesForSeconds(sampleRate, 0.5) + 1, sizeof(float));
         if (dsp->emptyMallRoomLine[line] == NULL) {
             OverhearDSPDestroy(dsp);
             return NULL;
@@ -270,6 +283,7 @@ void OverhearDSPDestroy(OverhearDSP *dsp) {
     if (dsp == NULL) {
         return;
     }
+    SceneDSPDestroy(dsp->scene);
     free(dsp->reflectionLeft);
     free(dsp->reflectionRight);
     for (int line = 0; line < EMPTY_MALL_ROOM_LINE_COUNT; line++) {
@@ -278,10 +292,51 @@ void OverhearDSPDestroy(OverhearDSP *dsp) {
     free(dsp);
 }
 
+float OverhearDSPPresetParameter(OverhearPlace place, uint32_t index) {
+    PlaceParameters p = parametersForPlace((int)place);
+    const float values[62] = {
+        p.lowpassHz, p.highpassHz, p.width, p.pan, p.drive, p.flutterDepth, p.sourceMix, p.directMix, p.earlyMix, p.windowMix, p.lateMix, p.outputGain,
+        0.68f, 0.82f, 0.73f, 6.10f,
+        (place == OverhearPlaceEmptyMall || place == OverhearPlaceMovieTheater) ? 1.0f : 0.0f,
+        71,109,151,223,317,443,619,811,
+        .27,.22,.18,.145,.115,.09,.07,.05,
+        23,187,347, .24,.20,.13, .5,.72,.28,
+        491,637,811,997,1181,1377,1593,1817,
+        .15,.13,.11,.095,.08,.067,.055,.045,
+        73,89,113,131
+    };
+    return index < 62 ? values[index] : 0;
+}
+
+void OverhearDSPSetParameter(OverhearDSP *dsp, uint32_t index, float value) {
+    if (!dsp || index >= 62 || !isfinite(value)) return;
+    float lower = 0, upper = 2;
+    if (index == 0 || index == 1) { lower = 20; upper = 20000; }
+    else if (index == 3) { lower = -1; upper = 1; }
+    else if (index == 4) { lower = 0.1f; upper = 6; }
+    else if (index == 5 || index == 12) upper = .99f;
+    else if (index == 13) upper = .96f;
+    else if (index == 14 || index == 15) { lower = .05f; upper = 20; }
+    else if (index == 16 || (index >= 39 && index <= 41)) upper = 1;
+    else if ((index >= 17 && index <= 24) || (index >= 33 && index <= 35) || (index >= 42 && index <= 49)) { lower = 1; upper = 1850; }
+    else if (index >= 58) { lower = 5; upper = 500; }
+    atomic_store_explicit(&dsp->controls[index], clampf(value, lower, upper), memory_order_relaxed);
+    atomic_fetch_add_explicit(&dsp->revision, 1, memory_order_release);
+}
+
 void OverhearDSPSetPlace(OverhearDSP *dsp, OverhearPlace place) {
-    if (dsp != NULL) {
-        atomic_store_explicit(&dsp->place, (int)place, memory_order_relaxed);
-    }
+    if (!dsp) return;
+    atomic_store_explicit(&dsp->sceneEnabled, false, memory_order_release);
+    atomic_store_explicit(&dsp->place, (int)place, memory_order_relaxed);
+    for (uint32_t i = 0; i < 62; i++)
+        atomic_store_explicit(&dsp->controls[i], OverhearDSPPresetParameter(place, i), memory_order_relaxed);
+    atomic_fetch_add_explicit(&dsp->revision, 1, memory_order_release);
+}
+
+void OverhearDSPSetScene(OverhearDSP *dsp, const float *values, uint32_t count) {
+    if (!dsp || !values || count != OVERHEAR_SCENE_VALUE_COUNT) return;
+    SceneDSPConfigure(dsp->scene, values);
+    atomic_store_explicit(&dsp->sceneEnabled, true, memory_order_release);
 }
 
 void OverhearDSPSetBlend(OverhearDSP *dsp, float blend) {
@@ -372,8 +427,8 @@ static void filterSource(OverhearDSP *dsp, float left, float right, float filter
         float time = (float)((double)dsp->processedFrameCount / dsp->sampleRate);
         float flutter = 1.0f
             - dsp->flutterDepth * 0.50f
-            + sinf(2.0f * (float)M_PI * 0.73f * time) * dsp->flutterDepth * 0.34f
-            + sinf(2.0f * (float)M_PI * 6.10f * time) * dsp->flutterDepth * 0.16f;
+            + sinf(2.0f * (float)M_PI * dsp->settings[14] * time) * dsp->flutterDepth * 0.34f
+            + sinf(2.0f * (float)M_PI * dsp->settings[15] * time) * dsp->flutterDepth * 0.16f;
         filtered[0] *= flutter;
         filtered[1] *= flutter;
     }
@@ -386,7 +441,7 @@ static void processRoomReverb(OverhearDSP *dsp, const float filtered[2], float e
         roomOutput[line] =
             dsp->emptyMallRoomLine[line][dsp->emptyMallRoomLineIndex[line]];
     }
-    const float emptyMallDamping = 0.68f;
+    const float emptyMallDamping = dsp->settings[12];
     float roomDamped[EMPTY_MALL_ROOM_LINE_COUNT];
     for (int line = 0; line < EMPTY_MALL_ROOM_LINE_COUNT; line++) {
         roomDamped[line] =
@@ -403,7 +458,7 @@ static void processRoomReverb(OverhearDSP *dsp, const float filtered[2], float e
     float roomInput[EMPTY_MALL_ROOM_LINE_COUNT] = {
         filtered[0], filtered[1], filtered[0], -filtered[1]
     };
-    const float emptyMallFeedback = 0.82f;
+    const float emptyMallFeedback = dsp->settings[13];
     for (int line = 0; line < EMPTY_MALL_ROOM_LINE_COUNT; line++) {
         dsp->emptyMallRoomLine[line][dsp->emptyMallRoomLineIndex[line]] =
             roomInput[line] * 0.32f + roomMixed[line] * emptyMallFeedback;
@@ -470,6 +525,19 @@ static void accumulateReflections(const OverhearDSP *dsp, const uint32_t *tapFra
 
 static void processFrame(OverhearDSP *dsp, float left, float right, float *outLeft, float *outRight) {
     float targetBlend = atomic_load_explicit(&dsp->targetBlend, memory_order_relaxed);
+    if (atomic_load_explicit(&dsp->sceneEnabled, memory_order_acquire)) {
+        float l, r;
+        SceneDSPProcess(dsp->scene, left, right, &l, &r);
+        if (targetBlend <= 0.0001f) {
+            dsp->blend=0; *outLeft=left; *outRight=right; return;
+        }
+        dsp->blend += (targetBlend-dsp->blend)*0.0015f;
+        float angle=dsp->blend*(float)M_PI_2;
+        *outLeft=softLimit(left*cosf(angle)+l*sinf(angle));
+        *outRight=softLimit(right*cosf(angle)+r*sinf(angle));
+        return;
+    }
+
     if (targetBlend <= 0.0001f) {
         // Presence at zero is a bit-transparent diagnostic path through the
         // same capture and clock-synchronous speaker callback.
@@ -479,10 +547,31 @@ static void processFrame(OverhearDSP *dsp, float left, float right, float *outLe
         return;
     }
 
-    int activePlace = atomic_load_explicit(&dsp->place, memory_order_relaxed);
-    if (activePlace != dsp->cachedPlace) {
-        dsp->cachedPlace = activePlace;
-        dsp->targetParameters = parametersForPlace(activePlace);
+    unsigned revision = atomic_load_explicit(&dsp->revision, memory_order_acquire);
+    if (revision != dsp->cachedRevision) {
+        for (int i = 0; i < 62; i++) dsp->settings[i] = atomic_load_explicit(&dsp->controls[i], memory_order_relaxed);
+        dsp->targetParameters.lowpassHz = dsp->settings[0];
+        dsp->targetParameters.highpassHz = dsp->settings[1];
+        dsp->targetParameters.width = dsp->settings[2];
+        dsp->targetParameters.pan = dsp->settings[3];
+        dsp->targetParameters.drive = dsp->settings[4];
+        dsp->targetParameters.flutterDepth = dsp->settings[5];
+        dsp->targetParameters.sourceMix = dsp->settings[6];
+        dsp->targetParameters.directMix = dsp->settings[7];
+        dsp->targetParameters.earlyMix = dsp->settings[8];
+        dsp->targetParameters.windowMix = dsp->settings[9];
+        dsp->targetParameters.lateMix = dsp->settings[10];
+        dsp->targetParameters.outputGain = dsp->settings[11];
+        for (int i = 0; i < 8; i++) {
+            dsp->reflectionTapFrames[i] = framesForSeconds(dsp->sampleRate, dsp->settings[17+i] / 1000.0);
+            dsp->lateTapFrames[i] = framesForSeconds(dsp->sampleRate, dsp->settings[42+i] / 1000.0);
+        }
+        for (int i = 0; i < 3; i++) dsp->windowTapFrames[i] = framesForSeconds(dsp->sampleRate, dsp->settings[33+i] / 1000.0);
+        for (int i = 0; i < 4; i++) {
+            dsp->emptyMallRoomLineLength[i] = framesForSeconds(dsp->sampleRate, dsp->settings[58+i] / 1000.0);
+            if (dsp->emptyMallRoomLineIndex[i] >= dsp->emptyMallRoomLineLength[i]) dsp->emptyMallRoomLineIndex[i] = 0;
+        }
+        dsp->cachedRevision = revision;
     }
     PlaceParameters target = dsp->targetParameters;
     const float smoothing = 0.00085f;
@@ -508,15 +597,9 @@ static void processFrame(OverhearDSP *dsp, float left, float right, float *outLe
     dsp->reflectionLeft[reflectionWriteIndex] = filtered[0];
     dsp->reflectionRight[reflectionWriteIndex] = filtered[1];
 
-    static const float reflectionGain[REFLECTION_TAP_COUNT] = {
-        0.27f, 0.22f, 0.18f, 0.145f, 0.115f, 0.09f, 0.07f, 0.05f
-    };
     float reflected[2] = { 0.0f, 0.0f };
-    accumulateReflections(dsp, dsp->reflectionTapFrames, reflectionGain, REFLECTION_TAP_COUNT, reflected);
+    accumulateReflections(dsp, dsp->reflectionTapFrames, &dsp->settings[25], REFLECTION_TAP_COUNT, reflected);
 
-    static const float windowGain[WINDOW_TAP_COUNT] = {
-        0.24f, 0.20f, 0.13f
-    };
     float windowReturn[2] = { 0.0f, 0.0f };
     for (int tap = 0; tap < WINDOW_TAP_COUNT; tap++) {
         uint32_t index = delayedIndex(
@@ -527,16 +610,13 @@ static void processFrame(OverhearDSP *dsp, float left, float right, float *outLe
         // The nearby window reveal is centered; the later returns spread
         // asymmetrically from opposing stone façades.
         float delayedMid = (dsp->reflectionLeft[index] + dsp->reflectionRight[index]) * 0.5f;
-        float pan = tap == 1 ? 0.72f : (tap == 2 ? 0.28f : 0.5f);
-        windowReturn[0] += delayedMid * windowGain[tap] * (1.0f - pan) * 2.0f;
-        windowReturn[1] += delayedMid * windowGain[tap] * pan * 2.0f;
+        float pan = dsp->settings[39+tap];
+        windowReturn[0] += delayedMid * dsp->settings[36+tap] * (1.0f - pan) * 2.0f;
+        windowReturn[1] += delayedMid * dsp->settings[36+tap] * pan * 2.0f;
     }
 
-    static const float lateGain[LATE_TAP_COUNT] = {
-        0.15f, 0.13f, 0.11f, 0.095f, 0.08f, 0.067f, 0.055f, 0.045f
-    };
     float late[2] = { 0.0f, 0.0f };
-    accumulateReflections(dsp, dsp->lateTapFrames, lateGain, LATE_TAP_COUNT, late);
+    accumulateReflections(dsp, dsp->lateTapFrames, &dsp->settings[50], LATE_TAP_COUNT, late);
     dsp->reflectionIndex++;
     if (dsp->reflectionIndex == dsp->reflectionCapacity) {
         dsp->reflectionIndex = 0;
@@ -545,12 +625,8 @@ static void processFrame(OverhearDSP *dsp, float left, float right, float *outLe
     float emptyMallLate[2];
     processRoomReverb(dsp, filtered, emptyMallLate);
 
-    float *selectedLate = (
-        activePlace == OverhearPlaceEmptyMall
-        || activePlace == OverhearPlaceMovieTheater
-    )
-        ? emptyMallLate
-        : late;
+    float selectedLate[2];
+    for (int i = 0; i < 2; i++) selectedLate[i] = late[i] * (1 - dsp->settings[16]) + emptyMallLate[i] * dsp->settings[16];
 
     mixOutput(dsp, dry, filtered, reflected, windowReturn, selectedLate, outLeft, outRight);
 }

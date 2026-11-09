@@ -3,6 +3,8 @@ import SwiftUI
 
 struct PlacePopoverView: View {
     @Bindable var model: AppModel
+    @Environment(\.openWindow) private var openWindow
+    @State private var openHovered = false
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     var body: some View {
@@ -28,7 +30,7 @@ struct PlacePopoverView: View {
                 PlaceRow(
                     title: place.title,
                     symbol: place.symbol,
-                    isSelected: model.isOn && model.selectedPlace == place
+                    isSelected: model.isOn && model.draft.id == Effect.factory(place).id
                 ) {
                     model.select(place)
                 }
@@ -70,6 +72,25 @@ struct PlacePopoverView: View {
 
             Divider()
                 .padding(.horizontal, 8)
+
+            Button {
+                NSApp.setActivationPolicy(.regular)
+                if let window = NSApp.windows.first(where: { $0.isOverhearEditor }) {
+                    window.deminiaturize(nil)
+                    window.makeKeyAndOrderFront(nil)
+                } else { openWindow(id: "editor") }
+                NSApp.activate(ignoringOtherApps: true)
+            } label: {
+                HStack { Text("Open Overhear"); Spacer() }
+                    .padding(.horizontal, 8)
+                    .frame(maxWidth: .infinity, minHeight: 30, alignment: .leading)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .font(.system(size: 12))
+            .foregroundStyle(openHovered ? .white : .primary)
+            .background(openHovered ? Color.accentColor : .clear, in: RoundedRectangle(cornerRadius: 6))
+            .onHover { openHovered = $0 }
 
             QuitMenuRow {
                 NSApplication.shared.terminate(nil)

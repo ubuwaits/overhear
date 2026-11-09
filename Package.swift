@@ -31,7 +31,7 @@ let package = Package(
         ),
         .testTarget(
             name: "OverhearDSPTests",
-            dependencies: ["OverhearDSP"],
+            dependencies: ["OverhearDSP", "Overhear"],
             path: "Tests/OverhearDSPTests"
         )
     ]
